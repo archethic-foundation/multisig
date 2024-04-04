@@ -1,0 +1,17 @@
+{
+  "name": "Archethic Multisig CLI",
+  "version": "1.0.0",
+  "description": "",
+  "main": "multisig.js",
+  "bin": {
+    "multisig": "multisig.js"
+  },
+  "type": "module",
+  "keywords": ["archethic", "cli", "multisig", "smart contract"],
+  "author": "Archethic Foundation",
+  "license": "AGPL-3",
+  "dependencies": {
+    "@archethicjs/sdk": "^1.20.3",
+    "yargs": "^17.7.2"
+  }
+}

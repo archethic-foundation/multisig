@@ -1,0 +1,224 @@
+@version 1
+
+##########################
+# MultiSig Smart Contract
+##########################
+
+condition triggered_by: transaction, on: new_transaction(uco_transfers, token_transfers, code, setup), as: [
+    previous_public_key: authorized?(transaction_genesis()),
+        content: (
+        valid_code? = true
+        if code != "" do
+            valid_code? = Code.is_valid?(code)
+        end
+
+        valid_transfers? = valid_uco_transfers(uco_transfers) && valid_token_transfers(token_transfers)
+        valid_code? && valid_transfers?
+    )
+]
+
+actions triggered_by: transaction, on: new_transaction(uco_transfers, token_transfers, code, setup) do
+    last_transaction_id = State.get("transaction_id", 0)
+    transaction_id = last_transaction_id + 1
+
+    voter_genesis_address = transaction_genesis(transaction.previous_public_key)
+
+    transactions = State.get("transactions", Map.new())
+    transactions = Map.set(transactions, transaction_id, [
+        status: "pending",
+        uco_transfers: uco_transfers,
+        token_transfers: token_transfers,
+        code: code,
+        setup: setup,
+        from: voter_genesis_address,
+        confirmations: []
+    ])
+    State.set("transactions", transactions)
+
+    # Write to state the voters to free the content zone(used for contract initialization)
+    if State.get("voters") == nil do
+        content = Json.parse(contract.content)
+
+        # Uniform voter addresses case
+        initial_voters = Map.get(content, "voters", [])
+        voters = []
+        for voter in initial_voters do
+            voters = List.append(voters, String.to_hex(voter))
+        end
+
+        State.set("voters", voters)
+        State.set("confirmation_threshold", Map.get(content, "confirmationThreshold", 1))
+    end
+
+    State.set("transaction_id", transaction_id)
+
+    Contract.set_content("Transaction ID: #{transaction_id}")
+end
+
+condition triggered_by: transaction, on: confirm_transaction(transaction_id), as: [
+    content: (
+        transactions = State.get("transactions", Map.new())
+        transaction = Map.get(transactions, String.to_number(transaction_id))
+        transaction != nil && Map.get(transaction, "status") == "pending"
+    ),
+    address: (
+        voter_genesis_address = transaction_genesis(transaction.previous_public_key)
+        voters = State.get("voters")
+        if List.size(voters) > 1 do
+            authorized?(voter_genesis_address) && !emitter?(voter_genesis_address, transaction_id) && !already_voted?(voter_genesis_address, transaction_id)
+        else
+            authorized?(voter_genesis_address)
+        end
+    )
+]
+
+actions triggered_by: transaction, on: confirm_transaction(transaction_id) do
+    transactions = State.get("transactions", Map.new())
+    tx = Map.get(transactions, String.to_number(transaction_id))
+    tx_confirmations = Map.get(tx, "confirmations")
+
+    if confirmation_threshold_reached?(tx_confirmations) do
+        uco_transfers = Map.get(tx, "uco_transfers", [])
+        token_transfers = Map.get(tx, "token_transfers", [])
+        code = Map.get(tx, "code", "")
+        setup = Map.get(tx, "setup")
+
+        if List.size(uco_transfers) > 0 || List.size(token_transfers) > 0 do
+            Contract.set_type "transfer"
+
+            for transfer in uco_transfers do
+                Contract.add_uco_transfer(to: Map.get(transfer, "to"), amount: Map.get(transfer, "amount"))
+            end
+
+            for transfer in token_transfers do
+                Contract.add_token_transfer(to: Map.get(transfer, "to"), amount: Map.get(transfer, "amount"), token: Map.get(transfer, "token"))
+            end
+        end
+
+        if code != "" do
+            Contract.set_type "contract"
+            Contract.set_code(code)
+        end
+
+        if setup != nil do
+            new_voters = Map.get(setup, "voters", [])
+            existing_voters = State.get("voters")
+            State.set("voters", existing_voters ++ new_voters)
+
+            new_confirmation_threshold = Map.get(setup, "confirmationThreshold")
+            if new_confirmation_threshold != nil do
+                State.set("confirmation_threshold", new_confirmation_threshold)
+            end
+        end
+
+        tx_confirmations = List.append(tx_confirmations, transaction.address)
+        confirmed_tx = Map.set(tx, "confirmations", tx_confirmations)
+        confirmed_tx = Map.set(confirmed_tx, "status", "done")
+        transactions = Map.set(transactions, String.to_number(transaction_id), confirmed_tx)
+        State.set("transactions", transactions)
+    else
+        tx_confirmations = List.append(tx_confirmations, transaction.address)
+        confirmed_tx = Map.set(tx, "confirmations", tx_confirmations)
+        transactions = Map.set(transactions, String.to_number(transaction_id), confirmed_tx)
+        State.set("transactions", transactions)
+    end
+end
+
+export fun transaction_status(transaction_id) do
+    transactions = State.get("transactions", Map.new())
+    Map.get(transactions, transaction_id, [
+        status: "not exists",
+        uco_transfers: [],
+        token_transfers: [],
+        code: "",
+        setup: [
+            confirmation_threshold: 0,
+            voters: []
+        ]
+    ])
+end
+
+export fun setup() do
+  voters = State.get("voters")
+  confirmation_threshold = State.get("confirmation_threshold")
+
+    if voters == nil do
+        initial_content = Json.parse(contract.content)
+        initial_voters = Map.get(initial_content, "voters")
+
+        # Uniform voter addresses case
+        voters = []
+        for voter in initial_voters do
+            voters = List.append(voters, String.to_hex(voter))
+        end
+
+        confirmation_threshold = Map.get(initial_content, "confirmationThreshold", 1)
+    end
+
+    [
+        voters: voters,
+        confirmation_threshold: confirmation_threshold
+    ]
+end
+
+fun authorized?(genesis_address) do
+    setup = setup()
+    List.in?(setup.voters, genesis_address)
+end
+
+fun emitter?(genesis_address, transaction_id) do
+    transactions = State.get("transactions", Map.new())
+    tx = Map.get(transactions, String.to_number(transaction_id))
+    Map.get(tx, "from") == genesis_address
+end
+
+fun transaction_genesis(previous_public_key) do
+    previous_address = Chain.get_previous_address(previous_public_key)
+    Chain.get_genesis_address(previous_address)
+end
+
+fun valid_uco_transfers(transfers) do
+    if List.empty?(transfers) do
+        true
+    else
+        valid_uco_transfers = false
+        for transfer in transfers do
+            to = Map.get(transfer, "to")
+            amount = Map.get(transfer, "amount")
+            valid_uco_transfers = to != nil && amount != nil
+        end
+        valid_uco_transfers
+    end
+end
+
+fun valid_token_transfers(transfers) do
+    if List.empty?(transfers) do
+        true
+    else
+        valid_token_transfers = false
+        for transfer in transfers do
+            to = Map.get(transfer, "to")
+            amount = Map.get(transfer, "amount")
+            token = Map.get(transfer, "token")
+            valid_token_transfers = to != nil && amount != nil && token != nil
+        end
+        valid_token_transfers
+    end
+end
+
+fun confirmation_threshold_reached?(tx_confirmations) do
+    confirmation_threshold = State.get("confirmation_threshold", 1)
+    List.size(tx_confirmations) + 1 >= confirmation_threshold
+end
+
+fun already_voted?(voter_genesis_address, transaction_id) do
+    transactions = State.get("transactions", Map.new())
+    tx = Map.get(transactions, String.to_number(transaction_id), Map.new())
+    tx_confirmations = Map.get(tx, "confirmations", [])
+
+    voted? = false
+    for confirmation_address in tx_confirmations do
+        voted? = Chain.get_genesis_address(confirmation_address) == voter_genesis_address
+    end
+    voted?
+end
