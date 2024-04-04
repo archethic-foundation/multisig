@@ -73,6 +73,13 @@ async function promptInitialVoters(defaultAddress) {
         return [defaultAddress];
       }
       const voters = input.split(",").map((x) => x.trim());
+
+      voters.forEach((x) => {
+        if (!Utils.isHex(x)) {
+          throw new Error("Voter's address must be hexadecimal");
+        }
+      });
+
       return voters;
     },
   );

@@ -9,23 +9,18 @@ import confirm_transaction from "./commands/confirm_transaction.js";
 
 const y = yargs(hideBin(process.argv));
 
-y.command(deploy_multisig).help();
-y.command(new_transaction).help();
-y.command(confirm_transaction).help();
+y.command(deploy_multisig);
+y.command(new_transaction);
+y.command(confirm_transaction);
 
-y.command({
-  command: "*",
-  handler: () => {
-    y.showHelp();
-    process.exit(0);
-  },
-});
-
-y.fail((_msg, err) => {
-  console.log(new Error(err));
-  process.exit(1);
-});
-
-y.help();
+y.demandCommand(1, "");
 
 y.parse();
+
+y.fail(function (msg, err) {
+  if (err) {
+    throw err;
+  }
+  console.log(msg);
+  process.exit(1);
+});

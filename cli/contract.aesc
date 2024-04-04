@@ -58,7 +58,7 @@ end
 condition triggered_by: transaction, on: confirm_transaction(transaction_id), as: [
     content: (
         transactions = State.get("transactions", Map.new())
-        transaction = Map.get(transactions, String.to_number(transaction_id))
+        transaction = Map.get(transactions, transaction_id)
         transaction != nil && Map.get(transaction, "status") == "pending"
     ),
     address: (
@@ -74,7 +74,7 @@ condition triggered_by: transaction, on: confirm_transaction(transaction_id), as
 
 actions triggered_by: transaction, on: confirm_transaction(transaction_id) do
     transactions = State.get("transactions", Map.new())
-    tx = Map.get(transactions, String.to_number(transaction_id))
+    tx = Map.get(transactions, transaction_id)
     tx_confirmations = Map.get(tx, "confirmations")
 
     if confirmation_threshold_reached?(tx_confirmations) do
@@ -114,12 +114,12 @@ actions triggered_by: transaction, on: confirm_transaction(transaction_id) do
         tx_confirmations = List.append(tx_confirmations, transaction.address)
         confirmed_tx = Map.set(tx, "confirmations", tx_confirmations)
         confirmed_tx = Map.set(confirmed_tx, "status", "done")
-        transactions = Map.set(transactions, String.to_number(transaction_id), confirmed_tx)
+        transactions = Map.set(transactions, transaction_id, confirmed_tx)
         State.set("transactions", transactions)
     else
         tx_confirmations = List.append(tx_confirmations, transaction.address)
         confirmed_tx = Map.set(tx, "confirmations", tx_confirmations)
-        transactions = Map.set(transactions, String.to_number(transaction_id), confirmed_tx)
+        transactions = Map.set(transactions, transaction_id, confirmed_tx)
         State.set("transactions", transactions)
     end
 end
@@ -168,7 +168,7 @@ end
 
 fun emitter?(genesis_address, transaction_id) do
     transactions = State.get("transactions", Map.new())
-    tx = Map.get(transactions, String.to_number(transaction_id))
+    tx = Map.get(transactions, transaction_id)
     Map.get(tx, "from") == genesis_address
 end
 
@@ -213,7 +213,7 @@ end
 
 fun already_voted?(voter_genesis_address, transaction_id) do
     transactions = State.get("transactions", Map.new())
-    tx = Map.get(transactions, String.to_number(transaction_id), Map.new())
+    tx = Map.get(transactions, transaction_id, Map.new())
     tx_confirmations = Map.get(tx, "confirmations", [])
 
     voted? = false

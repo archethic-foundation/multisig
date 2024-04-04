@@ -11,7 +11,26 @@ async function confirmTransaction() {
   const archethic = await getWalletConnection();
 
   const multiSig = await promptMultiSig();
+
+  const chainSizeResponse = await archethic.network.rawGraphQLQuery(`
+  query{
+    lastTransaction(address: "${multiSig}") {
+      chainLength
+    }
+  }
+  `);
+
+  if (
+    chainSizeResponse == null ||
+    (chainSizeResponse.lastTransaction &&
+      chainSizeResponse.lastTransaction.chainLength == 0)
+  ) {
+    throw new Error("Multisig doesn't exists");
+  }
+
   const transactionId = await promptTransactionId();
+
+  await assertTransactionId(archethic, multiSig, transactionId);
 
   const tx = archethic.transaction
     .new()
@@ -27,7 +46,7 @@ async function confirmTransaction() {
 async function promptMultiSig() {
   return await prompt("Enter the address of the multisig: ", (input) => {
     if (input == "") {
-      throw "Invalid multisig address";
+      throw new Error("Invalid multisig address");
     }
     return input;
   });
@@ -37,8 +56,20 @@ async function promptTransactionId() {
   return await prompt("Enter the transaction id to confirm: ", (input) => {
     const id = Number(input);
     if (id == NaN || id <= 0) {
-      throw "Invalid transaction ID";
+      throw new Error("Invalid transaction ID");
     }
-    return input;
+    return id;
   });
+}
+
+async function assertTransactionId(archethic, multiSig, transactionId) {
+  const { status } = await archethic.network.callFunction(
+    multiSig,
+    "transaction_status",
+    [transactionId],
+  );
+
+  if (status == "not exists") {
+    throw new Error("Transaction ID not exists");
+  }
 }

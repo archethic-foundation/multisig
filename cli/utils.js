@@ -19,9 +19,13 @@ export async function getWalletConnection() {
 }
 
 export async function prompt(question, callback) {
-  return new Promise((r) => {
+  return new Promise((resolve, reject) => {
     readline.question(question, (input) => {
-      r(callback(input));
+      try {
+        resolve(callback(input));
+      } catch (e) {
+        reject(e);
+      }
     });
   });
 }

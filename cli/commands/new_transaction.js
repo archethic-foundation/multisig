@@ -1,3 +1,4 @@
+import { Utils } from "@archethicjs/sdk";
 import { readFileSync, existsSync } from "fs";
 import { getWalletConnection, prompt } from "../utils.js";
 
@@ -12,6 +13,22 @@ async function newTransaction() {
   const archethic = await getWalletConnection();
 
   const multiSig = await promptMultiSig();
+
+  const chainSizeResponse = await archethic.network.rawGraphQLQuery(`
+  query{
+    lastTransaction(address: "${multiSig}") {
+      chainLength
+    }
+  }
+  `);
+
+  if (
+    chainSizeResponse == null ||
+    (chainSizeResponse.lastTransaction &&
+      chainSizeResponse.lastTransaction.chainLength == 0)
+  ) {
+    throw new Error("Multisig doesn't exists");
+  }
 
   const mapChoices = {
     1: ucoTransferPrompt,
@@ -50,8 +67,13 @@ async function newTransaction() {
 async function promptMultiSig() {
   return await prompt("Enter the address of the multisig: ", (input) => {
     if (input == "") {
-      throw "Invalid multisig address";
+      throw new Error("Invalid multisig address");
     }
+
+    if (!Utils.isHex(input)) {
+      throw new Error("Multisig's address must be hexadecimal");
+    }
+
     return input;
   });
 }
@@ -85,15 +107,17 @@ async function choice(mapChoices, tx) {
 }
 
 async function ucoTransferPrompt(tx) {
-  const recipient = await prompt(
-    "Enter the recipient address: ",
-    (input) => input,
-  );
+  const recipient = await prompt("Enter the recipient address: ", (input) => {
+    if (!Utils.isHex(input)) {
+      throw new Error("Recipient address must be hexadecimal");
+    }
+    return input;
+  });
 
   const amount = await prompt("Enter the amount to transfer: ", (input) => {
     const amount = Number(input);
     if (amount == NaN || amount <= 0) {
-      throw "Invalid number";
+      throw new Error("Invalid number");
     }
     return amount;
   });
@@ -103,20 +127,27 @@ async function ucoTransferPrompt(tx) {
 }
 
 async function tokenTransferPrompt(tx) {
-  const recipient = await prompt(
-    "Enter the recipient address: ",
-    (input) => input,
-  );
+  const recipient = await prompt("Enter the recipient address: ", (input) => {
+    if (!Utils.isHex(input)) {
+      throw new Error("Recipient address must be hexadecimal");
+    }
+    return input;
+  });
 
   const amount = await prompt("Enter the amount to transfer: ", (input) => {
     const amount = Number(input);
     if (amount == NaN || amount <= 0) {
-      throw "Invalid number";
+      throw new Error("Invalid number");
     }
     return amount;
   });
 
-  const token = await prompt("Enter the token to transfer: ", (input) => input);
+  const token = await prompt("Enter the token to transfer: ", (input) => {
+    if (!Utils.isHex(input)) {
+      throw new Error("Token address must be hexadecimal");
+    }
+    return input;
+  });
 
   tx.token_transfers.push({ to: recipient, amount: amount, token: token });
   return tx;
@@ -127,7 +158,7 @@ async function codePrompt(tx) {
     "Enter filepath for code to propose:\n",
     (path) => {
       if (!existsSync(path)) {
-        throw "Source code filepath doesn't exists";
+        throw new Error("Source code filepath doesn't exists");
       }
       return path;
     },
@@ -143,6 +174,12 @@ async function voterPrompt(tx) {
     "Enter the new voter addresses to autorize (use ',' as separator): ",
     (input) => {
       const voters = input.split(",").map((x) => x.trim());
+
+      voters.forEach((x) => {
+        if (!Utils.isHex(x)) {
+          throw new Error("Voter's address must be hexadecimal");
+        }
+      });
       return voters;
     },
   );
@@ -161,7 +198,7 @@ async function confirmationThresholdPrompt(tx) {
     (input) => {
       const number = Number(input);
       if (number == NaN || number <= 0) {
-        throw "Invalid number";
+        throw new Error("Invalid number");
       }
       return number;
     },
