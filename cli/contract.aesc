@@ -13,7 +13,7 @@ condition triggered_by: transaction, on: new_transaction(uco_transfers, token_tr
         end
 
         valid_transfers? = valid_uco_transfers(uco_transfers) && valid_token_transfers(token_transfers)
-        valid_code? && valid_transfers?
+        valid_code? && valid_transfers? && valid_setup(setup)
     )
 ]
 
@@ -38,15 +38,8 @@ actions triggered_by: transaction, on: new_transaction(uco_transfers, token_tran
     # Write to state the voters to free the content zone(used for contract initialization)
     if State.get("voters") == nil do
         content = Json.parse(contract.content)
-
-        # Uniform voter addresses case
         initial_voters = Map.get(content, "voters", [])
-        voters = []
-        for voter in initial_voters do
-            voters = List.append(voters, String.to_hex(voter))
-        end
-
-        State.set("voters", voters)
+        State.set("voters", uniform_voter_addresses(initial_voters))
         State.set("confirmation_threshold", Map.get(content, "confirmationThreshold", 1))
     end
 
@@ -103,7 +96,7 @@ actions triggered_by: transaction, on: confirm_transaction(transaction_id) do
         if setup != nil do
             new_voters = Map.get(setup, "voters", [])
             existing_voters = State.get("voters")
-            State.set("voters", existing_voters ++ new_voters)
+            State.set("voters", existing_voters ++ uniform_voter_addresses(new_voters))
 
             new_confirmation_threshold = Map.get(setup, "confirmationThreshold")
             if new_confirmation_threshold != nil do
@@ -206,6 +199,20 @@ fun valid_token_transfers(transfers) do
     end
 end
 
+fun valid_setup(new_setup) do
+    new_voters = Map.get(new_setup, "voters", [])
+    confirmation_threshold = Map.get(new_setup, "confirmationThreshold", 1)
+
+    existing_setup = setup()
+    existing_voters = Map.get(existing_setup, "voters")
+    valid_voters? = List.empty?(new_voters) || false
+    for voter in new_voters do
+        valid_voters? = !List.in?(existing_voters, String.to_hex(voter))
+    end
+
+    confirmation_threshold > 0 && valid_voters?
+end
+
 fun confirmation_threshold_reached?(tx_confirmations) do
     confirmation_threshold = State.get("confirmation_threshold", 1)
     List.size(tx_confirmations) + 1 >= confirmation_threshold
@@ -221,4 +228,12 @@ fun already_voted?(voter_genesis_address, transaction_id) do
         voted? = Chain.get_genesis_address(confirmation_address) == voter_genesis_address
     end
     voted?
+end
+
+fun uniform_voter_addresses(voter_addresses) do
+    voters = []
+    for voter in voter_addresses do
+        voters = List.append(voters, String.to_hex(voter))
+    end
+    voters
 end
