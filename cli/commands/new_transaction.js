@@ -33,30 +33,30 @@ async function newTransaction() {
   const mapChoices = {
     1: ucoTransferPrompt,
     2: tokenTransferPrompt,
-    3: codePrompt,
-    4: voterPrompt,
-    5: confirmationThresholdPrompt,
+    3: recipientPrompt,
+    4: codePrompt,
+    5: voterPrompt,
+    6: confirmationThresholdPrompt,
   };
 
   const new_tx = await choice(mapChoices, {
-    uco_transfers: [],
-    token_transfers: [],
-    code: "",
+    tx_data: {
+      uco_transfers: [],
+      token_transfers: [],
+      code: "",
+      recipients: [],
+    },
     setup: {},
   });
 
   console.log("Transaction to sent");
-  console.log(new_tx);
+
+  console.log(JSON.stringify(new_tx, null, 2));
 
   const tx = archethic.transaction
     .new()
     .setType("transfer")
-    .addRecipient(multiSig, "new_transaction", [
-      new_tx.uco_transfers,
-      new_tx.token_transfers,
-      new_tx.code,
-      new_tx.setup,
-    ]);
+    .addRecipient(multiSig, "new_transaction", [new_tx.tx_data, new_tx.setup]);
 
   const { transactionAddress } = await archethic.rpcWallet.sendTransaction(tx);
   console.log(`Transaction confirmed: ${transactionAddress}`);
@@ -79,6 +79,8 @@ async function promptMultiSig() {
 }
 
 async function choice(mapChoices, tx) {
+  const selection = Object.keys(mapChoices).length + 1;
+
   const menu = `
 
 -------------------------------------
@@ -86,15 +88,16 @@ async function choice(mapChoices, tx) {
 -------------------------------------
 - 1: Add UCO transfer
 - 2: Add token transfer
-- 3: Propose new code
-- 4: Add new voters
-- 5: Set new confirmation threshold
-- 6: Send the transaction
+- 3: Add smart contract call
+- 4: Propose new code
+- 5: Add new voters
+- 6: Set new confirmation threshold
+- ${selection}: Send the transaction
 -------------------------------------
 > `;
 
   return await prompt(menu, async (input) => {
-    if (input != "6") {
+    if (input != selection) {
       if (!Object.keys(mapChoices).includes(input)) {
         return r(choice(mapChoices, tx));
       }
@@ -122,7 +125,7 @@ async function ucoTransferPrompt(tx) {
     return amount;
   });
 
-  tx.uco_transfers.push({ to: recipient, amount: amount });
+  tx.tx_data.uco_transfers.push({ to: recipient, amount: amount });
   return tx;
 }
 
@@ -149,7 +152,44 @@ async function tokenTransferPrompt(tx) {
     return input;
   });
 
-  tx.token_transfers.push({ to: recipient, amount: amount, token: token });
+  tx.tx_data.token_transfers.push({
+    to: recipient,
+    amount: amount,
+    token_address: token,
+  });
+  return tx;
+}
+
+async function recipientPrompt(tx) {
+  const recipient = await prompt("Enter the recipient address: ", (input) => {
+    if (!Utils.isHex(input)) {
+      throw new Error("Recipient address must be hexadecimal");
+    }
+    return input;
+  });
+
+  const action = await prompt("Enter the action's name: ", (input) => {
+    if (input == "") {
+      throw new Error("Action is required");
+    }
+    return input;
+  });
+
+  const args = await prompt(
+    "Enter the parameters: (use ',' as separator)",
+    (input) => {
+      return input
+        .split(",")
+        .map((arg) => arg.trim())
+        .map(parseTypedArgument);
+    },
+  );
+
+  tx.tx_data.recipients.push({
+    address: recipient,
+    action: action,
+    args: args,
+  });
   return tx;
 }
 
@@ -165,7 +205,7 @@ async function codePrompt(tx) {
   );
 
   const code = readFileSync(codeFilePath, "utf8");
-  tx.code = code;
+  tx.tx_data.code = code;
   return tx;
 }
 
@@ -206,4 +246,16 @@ async function confirmationThresholdPrompt(tx) {
 
   tx.setup.confirmationThreshold = confirmationThreshold;
   return tx;
+}
+
+function parseTypedArgument(input) {
+  // Check if input is an object
+  if (typeof input === "object") {
+    return input; // Return input as is
+  } else if (!isNaN(input)) {
+    // Check if input is a number
+    return parseFloat(input); // Parse input as a float
+  } else {
+    return input; // Return input as string
+  }
 }
