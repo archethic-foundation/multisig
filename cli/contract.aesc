@@ -104,7 +104,8 @@ actions triggered_by: transaction, on: confirm_transaction(transaction_id) do
     confirmed_tx = [
         status: "done",
         origin_tx: Map.get(tx, "origin_tx"),
-        confirmations:  List.append(tx_confirmations, transaction.address)
+        confirmations:  List.append(tx_confirmations, transaction.address),
+        details_tx: contract.address
     ]
     transactions = Map.set(transactions, transaction_id, confirmed_tx)
     State.set("transactions", transactions)
