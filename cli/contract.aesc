@@ -134,7 +134,7 @@ export fun transaction_status(transaction_id) do
   ])
 end
 
-export fun setup() do
+export fun status() do
   voters = State.get("voters")
   confirmation_threshold = State.get("confirmation_threshold")
 
@@ -152,13 +152,16 @@ export fun setup() do
   end
 
   [
-    voters: voters,
-    confirmation_threshold: confirmation_threshold
+    setup: [
+      voters: voters,
+      confirmation_threshold: confirmation_threshold
+    ],
+    transactions: State.get("transactions", Map.new())
   ]
 end
 
 fun authorized?(genesis_address) do
-  setup = setup()
+  setup = Map.get(status(), "setup")
   List.in?(setup.voters, genesis_address)
 end
 
@@ -177,7 +180,7 @@ fun valid_setup?(new_setup) do
   new_voters = Map.get(new_setup, "voters", [])
   confirmation_threshold = Map.get(new_setup, "confirmationThreshold", 1)
 
-  existing_setup = setup()
+  existing_setup = Map.get(status(), "setup")
   existing_voters = Map.get(existing_setup, "voters")
   valid_voters? = List.empty?(new_voters) || false
   for voter in new_voters do
