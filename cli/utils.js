@@ -47,6 +47,9 @@ export function sendTransactionAsync(tx) {
 
 export function getContractCode() {
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const contractSourceFile = path.resolve(__dirname, "./contract.aesc");
+  const contractSourceFile = path.resolve(
+    __dirname,
+    "../app/public/contract.aesc",
+  );
   return readFileSync(contractSourceFile, "utf8");
 }

@@ -4,6 +4,17 @@
 # MultiSig Smart Contract
 ##########################
 
+# Propose a new transaction using transaction's data and multisig new setup
+# Transaction data includes:
+#  - uco transfers
+#  - token transfers
+#  - recipients (contract calls)
+#  - code (updgrade multisig code)
+#
+# Mulitisig setup includes:
+# - New voters
+# - Removed voters
+# _ Confirmation threshold
 condition triggered_by: transaction, on: new_transaction(tx_data, setup), as: [
   previous_public_key: authorized?(transaction_genesis()),
   content: (
@@ -33,6 +44,7 @@ actions triggered_by: transaction, on: new_transaction(tx_data, setup) do
     confirmations: [],
     origin_tx: transaction.address
   ])
+
   State.set("transactions", transactions)
 
   # Write to state the voters to free the content zone(used for contract initialization)
@@ -68,7 +80,6 @@ actions triggered_by: transaction, on: confirm_transaction(transaction_id) do
   tx = Map.get(transactions, transaction_id)
   tx_confirmations = Map.get(tx, "confirmations")
 
-
   if confirmation_threshold_reached?(tx_confirmations) do
     tx_data = Map.get(tx, "tx_data")
     setup = Map.get(tx, "setup")
@@ -91,11 +102,24 @@ actions triggered_by: transaction, on: confirm_transaction(transaction_id) do
     end
 
     if setup != nil do
-      new_voters = Map.get(setup, "voters", [])
+      new_voters = uniform_voter_addresses(Map.get(setup, "new_voters", []))
+      removed_voters = uniform_voter_addresses(Map.get(setup, "removed_voters", []))
       existing_voters = State.get("voters")
-      State.set("voters", existing_voters ++ uniform_voter_addresses(new_voters))
 
-      new_confirmation_threshold = Map.get(setup, "confirmationThreshold")
+      filtered_voters = []
+      if !List.empty?(removed_voters) do
+         for existing_voter in existing_voters do
+            if !List.in?(removed_voters, existing_voter) do
+                filtered_voters = List.append(filtered_voters, existing_voter)
+            end
+        end
+      else
+        filtered_voters = existing_voters
+      end
+
+      State.set("voters", filtered_voters ++ new_voters)
+
+      new_confirmation_threshold = Map.get(setup, "confirmation_threshold")
       if new_confirmation_threshold != nil do
         State.set("confirmation_threshold", new_confirmation_threshold)
       end
@@ -177,7 +201,8 @@ fun transaction_genesis(previous_public_key) do
 end
 
 fun valid_setup?(new_setup) do
-  new_voters = Map.get(new_setup, "voters", [])
+  new_voters = Map.get(new_setup, "new_voters", [])
+  removed_voters = Map.get(new_setup, "removed_voters", [])
   confirmation_threshold = Map.get(new_setup, "confirmationThreshold", 1)
 
   existing_setup = Map.get(status(), "setup")
@@ -185,6 +210,10 @@ fun valid_setup?(new_setup) do
   valid_voters? = List.empty?(new_voters) || false
   for voter in new_voters do
       valid_voters? = !List.in?(existing_voters, String.to_hex(voter))
+  end
+
+  for voter in removed_voters do
+    valid_voters? = List.in?(existing_voters, String.to_hex(voter))
   end
 
   confirmation_threshold > 0 && valid_voters?

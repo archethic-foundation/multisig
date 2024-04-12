@@ -224,11 +224,7 @@ async function voterPrompt(tx) {
     },
   );
 
-  if (tx.setup.voters) {
-    tx.setup.voters = tx.voters.concat(voters);
-  } else {
-    tx.setup.voters = voters;
-  }
+  tx.setup.new_voters = voters;
   return tx;
 }
 
