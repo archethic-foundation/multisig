@@ -51,6 +51,6 @@ function selectRequiredConfirmation(value) {
     </select>
     <p class="text-xs text-slate-500 mt-1">
         Indicate how many signatures are required to fullfill a multisigned
-        transaction
+        transaction apart from the transaction's initiator
     </p>
 </template>

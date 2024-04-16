@@ -12,6 +12,10 @@ const props = defineProps({
         type: Number,
         required: true,
     },
+    nbVoters: {
+        type: Number,
+        required: true,
+    },
 });
 
 import { useConnectionStore } from "@/stores/connection";
@@ -41,10 +45,14 @@ watchEffect(async () => {
 
     const currentAddress = connectionStore.accountAddress.toUpperCase();
 
+    const eligibleToVote =
+        props.nbVoters > 1 ? props.transaction.from != currentAddress : true;
+    const alreadyVoted = confirmationsGenesisAddresses.includes(currentAddress);
+
     const confirmation =
-        props.transaction.from != currentAddress &&
         props.transaction.status == "pending" &&
-        !confirmationsGenesisAddresses.includes(currentAddress);
+        eligibleToVote &&
+        !alreadyVoted;
 
     toBeConfirmed.value = confirmation;
 });

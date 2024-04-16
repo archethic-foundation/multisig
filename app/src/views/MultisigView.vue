@@ -305,6 +305,7 @@ function shortenAddress(address) {
                             :requiredConfirmations="
                                 transaction.setup.confirmationThreshold
                             "
+                            :nbVoters="voters.length"
                             @confirm-transaction="handleTransactionConfirmation"
                         />
                     </template>
