@@ -1,11 +1,11 @@
 <script setup>
-import Button from "./Button.vue";
-import WelcomeItem from "./WelcomeItem.vue";
-import IconTooling from "./icons/IconTooling.vue";
-import IconDocumentation from "./icons/IconDocumentation.vue";
-import IconEcosystem from "./icons/IconEcosystem.vue";
+import Button from "@/components/Button.vue";
+import WelcomeItem from "@/components/landing/WelcomeItem.vue";
+import IconTooling from "@/components/icons/IconTooling.vue";
+import IconDocumentation from "@/components/icons/IconDocumentation.vue";
+import IconEcosystem from "@/components/icons/IconEcosystem.vue";
 
-import Router from "../router";
+import Router from "@/router";
 
 function redirect() {
     Router.push("/app");

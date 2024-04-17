@@ -1,6 +1,5 @@
 <script setup>
-import TheWelcome from "../components/TheWelcome.vue";
-import HelloWorld from "../components/HelloWorld.vue";
+import TheWelcome from "@/components/landing/TheWelcome.vue";
 </script>
 
 <template>
@@ -14,7 +13,9 @@ import HelloWorld from "../components/HelloWorld.vue";
                 height="125"
             />
             <div class="fox">
-                <HelloWorld msg="AEVault" />
+                <h1 class="font-weight-medium text-5xl text-slate-300">
+                    AEVault
+                </h1>
             </div>
         </header>
         <main class="pl-20">

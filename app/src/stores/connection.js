@@ -11,35 +11,36 @@ export const useConnectionStore = defineStore("connection", () => {
   const accountAddress = ref("");
   const accountName = ref("");
   const endpoint = ref("");
+  const connecting = ref(false);
 
   async function connect() {
     if (isConnected.value) {
       return connection.value;
     }
-    try {
-      console.log("Connecting to Archethic's wallet");
-      const archethic = new Archethic("ws://127.0.0.1:12345");
-      archethic.rpcWallet.setOrigin({ name: "Archethic Multisig CLI" });
-      await archethic.connect();
-      connection.value = archethic;
-      const { genesisAddress: currentAddress, shortName: currentName } =
-        await archethic.rpcWallet.getCurrentAccount();
-      accountAddress.value = currentAddress;
-      accountName.value = currentName;
-
-      const { endpointUrl } = await archethic.rpcWallet.getEndpoint();
-      endpoint.value = endpointUrl;
-
-      await archethic.rpcWallet.onCurrentAccountChange(async () => {
-        const { genesisAddress: currentAddress, shortName: currentName } =
-          await archethic.rpcWallet.getCurrentAccount();
-        accountAddress.value = currentAddress;
-        accountName.value = currentName;
-      });
-      return archethic;
-    } catch (e) {
-      throw e;
+    if (connecting.value) {
+      await new Promise((r) => setTimeout(r, 100));
+      return await connect();
     }
+    connecting.value = true;
+    const archethic = await getArchethicConnection();
+
+    const { accountAddress: currentAddress, accountName: currentName } =
+      await loadAccount(
+        archethic,
+        ({ accountAddress: currentAddress, accountName: currentName }) => {
+          accountAddress.value = currentAddress;
+          accountName.value = currentName;
+        },
+      );
+
+    accountAddress.value = currentAddress;
+    accountName.value = currentName;
+
+    endpoint.value = await loadEndpoint(archethic);
+    connection.value = archethic;
+    connecting.value = false;
+
+    return archethic;
   }
 
   return {
@@ -51,3 +52,33 @@ export const useConnectionStore = defineStore("connection", () => {
     endpoint,
   };
 });
+
+async function getArchethicConnection() {
+  const archethic = new Archethic("ws://127.0.0.1:12345");
+  archethic.rpcWallet.setOrigin({ name: "Archethic Multisig CLI" });
+  console.log("Connecting to Archethic's wallet");
+  await archethic.connect();
+  return archethic;
+}
+
+async function loadAccount(archethic, changeCallback) {
+  const { genesisAddress: currentAddress, shortName: currentName } =
+    await archethic.rpcWallet.getCurrentAccount();
+
+  await archethic.rpcWallet.onCurrentAccountChange(async (account) => {
+    const { genesisAddress: currentAddress, shortName: currentName } =
+      await archethic.rpcWallet.getCurrentAccount();
+
+    changeCallback({
+      accountAddress: currentAddress,
+      accountName: currentName,
+    });
+  });
+
+  return { accountAddress: currentAddress, accountName: currentName };
+}
+
+async function loadEndpoint(archethic) {
+  const { endpointUrl } = await archethic.rpcWallet.getEndpoint();
+  return endpointUrl;
+}

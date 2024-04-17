@@ -2,12 +2,9 @@
 import { ref, computed, watch, toRef } from "vue";
 
 import Button from "../Button.vue";
-import List from "../List.vue";
 import Voter from "./Voter.vue";
-import VoterForm from "./voter/form.vue";
-import ConfirmationSelect from "./setup/confirmationSelect.vue";
-
-import { Utils } from "@archethicjs/sdk";
+import VoterForm from "./VoterForm.vue";
+import ConfirmationSelect from "./Setup/ConfirmationSelect.vue";
 
 const props = defineProps({
     voters: {
@@ -17,6 +14,10 @@ const props = defineProps({
     requiredConfirmations: {
         type: Number,
         default: 1,
+    },
+    canEdit: {
+        type: Boolean,
+        default: true,
     },
 });
 
@@ -54,7 +55,7 @@ function handleRemoveVoter(voterAddress) {
         <Button
             class="bg-slate-500"
             @click="showNewVoterForm = true"
-            v-show="!showNewVoterForm"
+            v-show="props.canEdit && !showNewVoterForm"
             >Add voter</Button
         >
     </div>
@@ -65,10 +66,10 @@ function handleRemoveVoter(voterAddress) {
         <VoterForm @new-voter="handleNewVoter" />
     </div>
     <div class="flex flex-col gap-3" v-if="nbVoters > 0">
-        <List :items="props.voters">
-            <template #item="voter">
-                <Voter :voter="voter" @remove-voter="handleRemoveVoter" />
-            </template>
-        </List>
+        <Voter
+            :voter="voter"
+            @remove-voter="handleRemoveVoter"
+            v-for="voter in props.voters"
+        />
     </div>
 </template>

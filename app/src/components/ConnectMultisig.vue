@@ -1,16 +1,13 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 import { Utils } from "@archethicjs/sdk";
 
 import Button from "./Button.vue";
-import { useConnectionStore } from "@/stores/connection";
 
 const emit = defineEmits(["connect"]);
 
 const multisig = ref("");
 const errMsg = ref("");
-
-const connectionStore = useConnectionStore();
 
 function connect() {
     if (!Utils.isHex(multisig.value)) {
@@ -23,12 +20,12 @@ function connect() {
 </script>
 
 <template>
-    <h2 class="text-md text-slate-600">Access your vault</h2>
-    <div class="mt-5 flex flex-col">
+    <h2 class="text-md text-slate-600">Access a vault</h2>
+    <div class="flex flex-col">
         <input
             type="text"
-            class="p-1 border-b text-slate bg-transparent border[#ddd] mt-5 outline-none text-sm"
-            placeholder="Enter your vault contract's address"
+            class="px-1 py-3 border-b text-slate bg-transparent border[#ddd] mt-5 outline-none text-sm"
+            placeholder="Enter vault contract's address"
             v-model="multisig"
             @keyup.enter="connect"
         />

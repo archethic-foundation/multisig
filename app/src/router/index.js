@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import("../views/ConnectMultisigView.vue"),
     },
     {
+      path: "/app/new",
+      name: "create_multisig",
+      component: () => import("../views/CreateMultisigView.vue"),
+    },
+    {
       path: "/app/:contractAddress",
       name: "app",
       component: () => import("../views/MultisigView.vue"),

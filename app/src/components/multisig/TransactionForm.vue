@@ -1,9 +1,20 @@
 <script setup>
-defineEmits(["proposeTransaction"]);
+const emit = defineEmits(["proposeTransaction"]);
+
+const props = defineProps({
+    pending: {
+        type: Boolean,
+        default: false,
+    },
+    error: {
+        type: String,
+        default: "",
+    },
+});
 
 import { ref, computed } from "vue";
 import Button from "../Button.vue";
-import List from "../List.vue";
+import { shortenAddress } from "@/utils";
 
 const transaction = ref({
     ucoTransfers: [],
@@ -102,10 +113,6 @@ function uploadContractCode(fileList) {
     reader.readAsText(fileList[0]);
 }
 
-function shortenAddress(address) {
-    return `${address.slice(0, 8)}...${address.slice(address.length - 8)}`;
-}
-
 function removeUCOTransfer(transfer) {
     transaction.value.ucoTransfers = transaction.value.ucoTransfers.filter(
         (t) => {
@@ -129,7 +136,7 @@ function removeTokenTransfer(transfer) {
 function removeContractCall(call) {
     transaction.value.contractCalls = transaction.value.contractCalls.filter(
         (c) => {
-            return !(c.address == call.address && c.action != call.action);
+            return !(c.address == call.address && c.action == call.action);
         },
     );
 }
@@ -151,34 +158,39 @@ function reset() {
 <template>
     <div class="">
         <header class="flex place-items-center gap-5">
-            <Button class="bg-slate-400 text-xs h-8" @click="pickForm('uco')"
+            <Button class="!bg-slate-400 h-9" @click="pickForm('uco')"
                 >Add UCO transfer</Button
             >
-            <Button class="bg-slate-400 text-xs h-8" @click="pickForm('token')"
+            <Button class="!bg-slate-400 h-9" @click="pickForm('token')"
                 >Add token transfer</Button
             >
-            <Button
-                class="bg-slate-400 text-xs h-8"
-                @click="pickForm('contract')"
+            <Button class="!bg-slate-400 h-9" @click="pickForm('contract')"
                 >Add smart contract call</Button
             >
-            <Button class="bg-slate-400 text-xs h-8" @click="pickForm('code')"
+            <Button class="!bg-slate-400 h-9" @click="pickForm('code')"
                 >Set contract code</Button
             >
             <div class="flex-1"></div>
             <Button
-                class="text-xs h-8"
+                class="h-9"
                 @click="$emit('proposeTransaction', transaction)"
                 v-show="canProposeTransaction"
-                >Propose transaction</Button
+                :disabled="props.pending"
             >
+                <span v-if="props.pending">Pending...</span>
+                <span v-if="!props.pending">Propose transaction</span>
+            </Button>
             <Button
-                class="text-xs h-8 bg-slate-500"
+                class="text-xs h-9 !bg-slate-500"
                 @click="reset"
-                v-show="canProposeTransaction"
+                v-show="!props.pending && canProposeTransaction"
                 >Reset</Button
             >
         </header>
+
+        <p class="text-sm text-red-800 mt-5" v-show="props.error != ''">
+            {{ props.error }}
+        </p>
 
         <div class="mt-5 flex flex-col gap-5" v-show="showUcoTransferForm">
             <p class="text-xs text-slate-500">Add new UCO's transfer</p>
@@ -206,9 +218,7 @@ function reset() {
             </div>
 
             <div>
-                <Button class="text-xs h-8" @click="addUcoTransfer"
-                    >Submit</Button
-                >
+                <Button @click="addUcoTransfer">Submit</Button>
             </div>
         </div>
 
@@ -319,93 +329,82 @@ function reset() {
             </div>
         </div>
 
-        <div class="mt-5">
-            <div
-                class="border-t pt-4 mt-2"
-                v-show="transaction.ucoTransfers.length > 0"
-            >
+        <div class="mt-10">
+            <div class="pt-5" v-show="transaction.ucoTransfers.length > 0">
                 <p class="text-xs text-slate-500 mb-2">UCO transfers</p>
                 <div class="gap-5">
-                    <List :items="transaction.ucoTransfers">
-                        <template #item="transfer">
-                            <div class="mb-2 flex">
-                                <p
-                                    class="text-sm content-center text-slate-500 w-1/4"
-                                >
-                                    Send {{ transfer.amount }} UCO to
-                                    {{ shortenAddress(transfer.to) }}
-                                </p>
-                                <Button
-                                    class="ml-5 text-xs h-8"
-                                    @click="removeUCOTransfer(transfer)"
-                                    >Remove</Button
-                                >
-                            </div>
-                        </template>
-                    </List>
+                    <div v-for="transfer in transaction.ucoTransfers">
+                        <div class="mb-2 flex">
+                            <p
+                                class="text-sm content-center text-slate-500 w-1/4"
+                            >
+                                Send {{ transfer.amount }} UCO to
+                                {{ shortenAddress(transfer.to) }}
+                            </p>
+                            <Button
+                                class="ml-5 text-xs h-8"
+                                @click="removeUCOTransfer(transfer)"
+                                >Remove</Button
+                            >
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div
                 v-show="transaction.tokenTransfers.length > 0"
-                class="border-t pt-4 mt-2"
+                class="pt-5 mt-2"
             >
                 <p class="text-xs text-slate-500 mb-2">Token transfers</p>
                 <div class="gap-5">
-                    <List :items="transaction.tokenTransfers">
-                        <template #item="transfer">
-                            <div class="mb-2 flex">
-                                <p
-                                    class="text-sm content-center text-slate-500 w-1/4"
-                                >
-                                    Send {{ transfer.amount }}
-                                    {{ shortenAddress(transfer.tokenAddress) }}
-                                    to
-                                    {{ shortenAddress(transfer.to) }}
-                                </p>
-                                <Button
-                                    class="ml-5 text-xs h-8"
-                                    @click="removeTokenTransfer(transfer)"
-                                    >Remove</Button
-                                >
-                            </div>
-                        </template>
-                    </List>
+                    <div v-for="transfer in transaction.tokenTransfers">
+                        <div class="mb-2 flex">
+                            <p
+                                class="text-sm content-center text-slate-500 w-1/4"
+                            >
+                                Send {{ transfer.amount }}
+                                {{ shortenAddress(transfer.tokenAddress) }}
+                                to
+                                {{ shortenAddress(transfer.to) }}
+                            </p>
+                            <Button
+                                class="ml-5 text-xs h-8"
+                                @click="removeTokenTransfer(transfer)"
+                                >Remove</Button
+                            >
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div
                 v-show="transaction.contractCalls.length > 0"
-                class="border-t pt-4 mt-2"
+                class="pt-5 mt-2"
             >
                 <p class="text-xs text-slate-500 mb-2">Contract calls</p>
                 <div class="gap-5">
-                    <List :items="transaction.contractCalls">
-                        <template #item="call">
-                            <div class="flex mb-2">
-                                <p
-                                    class="text-sm content-center text-slate-500 w-1/4"
-                                >
-                                    Execute
-                                    <span class="font-bold">{{
-                                        call.action
-                                    }}</span>
-                                    on {{ shortenAddress(call.address) }} with
-                                    arguments:
-                                    <code>{{ call.args }}</code>
-                                </p>
-                                <Button
-                                    class="ml-5 text-xs h-8"
-                                    @click="removeContractCall(call)"
-                                    >Remove</Button
-                                >
-                            </div>
-                        </template>
-                    </List>
+                    <div v-for="call in transaction.contractCalls">
+                        <div class="flex mb-2">
+                            <p
+                                class="text-sm content-center text-slate-500 w-1/4"
+                            >
+                                Execute
+                                <span class="font-bold">{{ call.action }}</span>
+                                on {{ shortenAddress(call.address) }} with
+                                arguments:
+                                <code>{{ call.args }}</code>
+                            </p>
+                            <Button
+                                class="ml-5 text-xs h-8"
+                                @click="removeContractCall(call)"
+                                >Remove</Button
+                            >
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div v-show="transaction.code != ''" class="border-t pt-4 mt-2">
+            <div v-show="transaction.code != ''" class="pt-5 mt-2">
                 <p class="text-xs text-slate-500 mb-2">Contract code</p>
                 <div class="flex mb-2">
                     <p class="text-xs truncate content-center w-1/4">

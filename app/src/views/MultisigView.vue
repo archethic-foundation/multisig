@@ -1,14 +1,13 @@
 <script setup>
 import { useRoute } from "vue-router";
-import { ref, onMounted, watch, toRaw } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import { Utils } from "@archethicjs/sdk";
 
 import Transaction from "@/components/multisig/Transaction.vue";
-import Voter from "@/components/multisig/Voter.vue";
-import List from "@/components/List.vue";
 import Button from "@/components/Button.vue";
 import TransactionFormVue from "@/components/multisig/TransactionForm.vue";
 import Setup from "@/components/multisig/Setup.vue";
+import Assets from "@/components/multisig/Assets.vue";
 
 import { useConnectionStore } from "@/stores/connection";
 
@@ -19,32 +18,67 @@ const voters = ref([]);
 const requiredConfirmations = ref(0);
 const hasSetupChanged = ref(false);
 const balance = ref({ uco: 0, tokens: {} });
+const initialSetup = ref({});
+
+const mainErr = ref("");
+const transactionFormErr = ref("");
+const confirmationError = ref("");
+const newSetupError = ref("");
+
+const loadingAssets = ref(true);
+const loadingTransactions = ref(true);
+const loadingSetup = ref(true);
+
+const pendingNewTransaction = ref(false);
+const pendingConfirmation = ref(false);
+const pendingNewSetup = ref(false);
+
+const canEdit = computed(() => {
+    return (
+        voters.value.find((v) => {
+            return (
+                v.address.toUpperCase() ==
+                connectionStore.accountAddress.toUpperCase()
+            );
+        }) != undefined
+    );
+});
 
 const connectionStore = useConnectionStore();
 
 let archethic;
 const contractAddress = route.params.contractAddress;
 
-const initialSetup = ref({});
-
 onMounted(async () => {
     archethic = await connectionStore.connect();
-
     await loadDetails();
 
     watch([requiredConfirmations, () => voters.value.length], () => {
         hasSetupChanged.value = true;
     });
 
-    await archethic.rpcWallet.onCurrentAccountChange(async () => {
-        await loadDetails();
-    });
+    watch(
+        () => connectionStore.accountAddress,
+        async () => {
+            await loadDetails();
+        },
+    );
 });
 
 async function loadDetails() {
-    const { setup: setup, transactions: musig_transactions } =
-        await archethic.network.callFunction(contractAddress, "status");
+    mainErr.value = "";
+    try {
+        await Promise.all([loadBalance(), loadStatus()]);
+    } catch (e) {
+        mainErr.value = e;
+    } finally {
+        loadingAssets.value = false;
+        loadingSetup.value = false;
+        loadingTransactions.value = false;
+    }
+}
 
+async function loadBalance() {
     const multisigBalance = await archethic.network.getBalance(contractAddress);
     balance.value = {
         uco: Utils.fromBigInt(multisigBalance.uco),
@@ -53,58 +87,60 @@ async function loadDetails() {
             return token;
         }),
     };
+}
 
+async function loadStatus() {
+    const { setup: setup, transactions: musig_transactions } =
+        await archethic.network.callFunction(contractAddress, "status");
+
+    setSetup(setup);
+    loadTransactions(musig_transactions, setup);
+}
+
+function setSetup(setup) {
     initialSetup.value = setup;
 
-    voters.value = setup.voters.map((voter) => {
-        return { address: voter };
+    voters.value = setup.voters.map((voter, _index, list) => {
+        return {
+            address: voter,
+            removable:
+                list.length > 0 &&
+                voter.toUpperCase() !=
+                    connectionStore.accountAddress.toUpperCase(),
+        };
     });
 
     requiredConfirmations.value = setup.confirmation_threshold;
+}
 
+async function loadTransactions(musig_transactions, setup) {
     transactions.value = await Promise.all(
         Object.keys(musig_transactions).map(async (id) => {
             const transaction = musig_transactions[id];
 
             if (transaction.details_tx) {
-                const res = await archethic.network.rawGraphQLQuery(`
-                query{
-                  transaction(address: "${transaction.details_tx}") {
-            		validationStamp {
-            		  ledgerOperations{
-                        unspentOutputs {
-                  		    state
-              		    }
-                      }
-            		}
-                  }
-                }
-              `);
-
-                if (res.transaction) {
-                    const state_utxo =
-                        res.transaction.validationStamp.ledgerOperations.unspentOutputs.find(
-                            (u) => u.state,
-                        );
-                    if (state_utxo) {
-                        const { state } = state_utxo;
-                        const snapshotSetup = {
-                            confirmationThreshold: state.confirmation_threshold,
-                        };
-                        const { tx_data: tx_data, setup: setup } =
-                            state.transactions[id];
-
-                        return Object.assign(
-                            {
-                                id: id,
-                                status: transaction.status,
-                                confirmations: transaction.confirmations,
-                                setup: snapshotSetup,
-                                from: transaction.from,
-                            },
-                            explode_tx(tx_data, setup),
-                        );
-                    }
+                const retrievedStatus = await fetchStateStatus(
+                    transaction.details_tx,
+                    id,
+                );
+                if (
+                    retrievedStatus.tx_data &&
+                    retrievedStatus.setup &&
+                    retrievedStatus.snapshotSetup
+                ) {
+                    return Object.assign(
+                        {
+                            id: id,
+                            status: transaction.status,
+                            confirmations: transaction.confirmations,
+                            setup: retrievedStatus.snapshotSetup,
+                            from: transaction.from,
+                        },
+                        explode_tx(
+                            retrievedStatus.tx_data,
+                            retrievedStatus.setup,
+                        ),
+                    );
                 }
             }
 
@@ -123,6 +159,45 @@ async function loadDetails() {
             );
         }),
     );
+}
+
+async function fetchStateStatus(transactionAddress, id) {
+    const res = await archethic.network.rawGraphQLQuery(`
+    query{
+      transaction(address: "${transactionAddress}") {
+        validationStamp {
+          ledgerOperations{
+              unspentOutputs {
+                state
+    		  }
+          }
+        }
+      }
+    }
+    `);
+
+    if (!res.transaction) {
+        return {};
+    }
+
+    const state_utxo =
+        res.transaction.validationStamp.ledgerOperations.unspentOutputs.find(
+            (u) => u.state,
+        );
+    if (!state_utxo) {
+        return {};
+    }
+
+    const { state } = state_utxo;
+    const snapshotSetup = {
+        confirmationThreshold: state.confirmation_threshold,
+    };
+    const { tx_data: tx_data, setup: setup } = state.transactions[id];
+    return {
+        tx_data,
+        setup,
+        snapshotSetup,
+    };
 }
 
 function explode_tx(tx_data, setup) {
@@ -147,7 +222,7 @@ function explode_tx(tx_data, setup) {
     };
 }
 
-async function handleProposeTransaction(proposeTransaction, proposeSetup) {
+async function proposeNewTransaction(proposeTransaction, proposeSetup) {
     const newTx = proposeTransaction
         ? {
               uco_transfers: proposeTransaction.ucoTransfers,
@@ -173,9 +248,7 @@ async function handleProposeTransaction(proposeTransaction, proposeSetup) {
         .setType("transfer")
         .addRecipient(contractAddress, "new_transaction", [newTx, newSetup]);
 
-    const { transactionAddress } =
-        await archethic.rpcWallet.sendTransaction(tx);
-
+    await archethic.rpcWallet.sendTransaction(tx);
     await waitNewTransaction(contractAddress, chainSize);
     await loadDetails();
 }
@@ -183,9 +256,9 @@ async function handleProposeTransaction(proposeTransaction, proposeSetup) {
 async function waitNewTransaction(
     contractAddress,
     previousChainSize,
-    attempts = 10,
+    attempts = 1,
 ) {
-    if (attempts == 0) {
+    if (attempts > 10) {
         console.error(
             "Timeout trying to watch new transaction on the multisig",
         );
@@ -194,12 +267,31 @@ async function waitNewTransaction(
     const chainSize =
         await archethic.transaction.getTransactionIndex(contractAddress);
     if (chainSize == previousChainSize) {
-        await new Promise((r) => setTimeout(r, 500));
-        waitNewTransaction(contractAddress, previousChainSize, attempts - 1);
+        await new Promise((r) => setTimeout(r, 500 * attempts));
+        await waitNewTransaction(
+            contractAddress,
+            previousChainSize,
+            attempts++,
+        );
+    }
+}
+
+async function handleProposeTransaction(proposeTransaction, proposeSetup) {
+    pendingNewTransaction.value = true;
+    transactionFormErr.value = "";
+
+    try {
+        await proposeNewTransaction(proposeTransaction, proposeSetup);
+    } catch (e) {
+        transactionFormErr.value = e;
+    } finally {
+        pendingNewTransaction.value = false;
     }
 }
 
 async function handleTransactionConfirmation(transactionId) {
+    pendingConfirmation.value = true;
+    confirmationError.value = "";
     const chainSize =
         await archethic.transaction.getTransactionIndex(contractAddress);
 
@@ -210,10 +302,15 @@ async function handleTransactionConfirmation(transactionId) {
             Number(transactionId),
         ]);
 
-    await archethic.rpcWallet.sendTransaction(tx);
-
-    await waitNewTransaction(contractAddress, chainSize);
-    await loadDetails();
+    try {
+        await archethic.rpcWallet.sendTransaction(tx);
+        await waitNewTransaction(contractAddress, chainSize);
+        await loadDetails();
+    } catch (e) {
+        confirmationError.value = e;
+    } finally {
+        pendingConfirmation.value = false;
+    }
 }
 
 async function proposeNewSetup() {
@@ -251,7 +348,16 @@ async function proposeNewSetup() {
         newSetup.confirmationThreshold = requiredConfirmations.value;
     }
 
-    await handleProposeTransaction(null, newSetup);
+    pendingNewSetup.value = true;
+    newSetupError.value = "";
+
+    try {
+        await proposeNewTransaction(null, newSetup);
+    } catch (e) {
+        newSetupError.value = e;
+    } finally {
+        pendingNewSetup.value = false;
+    }
 }
 
 function handleNewVoters(newVoters) {
@@ -264,32 +370,27 @@ function handleNewVoters(newVoters) {
 function handleNewConfirmationThreshold(newRequiredConfirmations) {
     requiredConfirmations.value = newRequiredConfirmations;
 }
-
-function shortenAddress(address) {
-    return `${address.slice(0, 8)}...${address.slice(address.length - 8)}`;
-}
 </script>
 
 <template>
-    <div class="flex flex-col p-10 h-screen">
+    <div class="flex flex-col p-10">
         <div class="bg-white shadow-xl p-5 rounded-md w-full flex-col">
-            <h2 class="text-xl text-slate-600">
+            <h2 class="text-xl text-slate-600 mb-10">
                 Vault's address: {{ contractAddress }}
             </h2>
-            <div>
+            <p v-show="mainErr != ''" class="text-sm text-red-800">
+                {{ mainErr }}
+            </p>
+            <p v-if="loadingAssets" class="text-sm text-slate-500">
+                Loading...
+            </p>
+            <div v-show="!loadingAssets && mainErr == ''">
                 <p class="mt-10 mb-2">Assets</p>
-                <div class="flex-col">
-                    <div class="flex">
-                        <p class="text-slate-500">UCO</p>
-                        <p class="text-slate-500 ml-3">{{ balance.uco }}</p>
-                    </div>
-                    <div v-for="token in balance.token" class="flex mt-2">
-                        <p class="text-slate-500">
-                            Token {{ shortenAddress(token.address) }}
-                        </p>
-                        <p class="text-slate-500 ml-3">{{ token.amount }}</p>
-                    </div>
-                </div>
+                <Assets
+                    v-if="!loadingAssets"
+                    :ucoBalance="balance.uco"
+                    :tokenBalance="balance.token"
+                />
             </div>
         </div>
 
@@ -298,18 +399,26 @@ function shortenAddress(address) {
                 <header class="flex justify-between place-items-center">
                     <h3 class="text-xl mb-5">Transactions</h3>
                 </header>
-                <List :items="transactions">
-                    <template #item="transaction">
-                        <Transaction
-                            :transaction="transaction"
-                            :requiredConfirmations="
-                                transaction.setup.confirmationThreshold
-                            "
-                            :nbVoters="voters.length"
-                            @confirm-transaction="handleTransactionConfirmation"
-                        />
-                    </template>
-                </List>
+                <p v-if="loadingTransactions" class="text-sm text-slate-500">
+                    Loading...
+                </p>
+                <Transaction
+                    v-for="transaction in transactions"
+                    :transaction="transaction"
+                    :requiredConfirmations="
+                        transaction.setup.confirmationThreshold
+                    "
+                    :nbVoters="voters.length"
+                    :pendingConfirmation="pendingConfirmation"
+                    @confirm-transaction="handleTransactionConfirmation"
+                />
+
+                <p
+                    class="text-sm text-red-800 mt-5"
+                    v-show="confirmationError != ''"
+                >
+                    {{ confirmationError }}
+                </p>
             </div>
             <div class="w-3/5 bg-white shadow-xl p-5 rounded-md">
                 <header class="mb-5 flex justify-between place-items-center">
@@ -318,23 +427,44 @@ function shortenAddress(address) {
                         class="text-xs h-8"
                         v-show="hasSetupChanged"
                         @click="proposeNewSetup"
-                        >Propose setup's change</Button
+                        :disabled="pendingNewSetup"
                     >
+                        <span v-show="!pendingNewSetup"
+                            >Propose setup's change</span
+                        >
+                        <span v-show="pendingNewSetup">Pending...</span>
+                    </Button>
                 </header>
+                <p v-if="loadingSetup" class="text-sm text-slate-500">
+                    Loading...
+                </p>
                 <Setup
                     :voters="voters"
                     :requiredConfirmations="requiredConfirmations"
                     @new-voters="handleNewVoters"
                     @new-confirmation-threshold="handleNewConfirmationThreshold"
+                    v-if="!loadingSetup && mainErr == ''"
+                    :canEdit="canEdit && !pendingNewSetup"
                 />
+                <p
+                    class="text-sm text-red-800 mt-5"
+                    v-show="newSetupError != ''"
+                >
+                    {{ newSetupError }}
+                </p>
             </div>
         </div>
-        <div class="mt-5 bg-white shadow-xl p-5 rounded-md w-full">
+        <div
+            class="mt-5 bg-white shadow-xl p-5 rounded-md w-full"
+            v-show="canEdit"
+        >
             <header class="flex justify-between place-items-center">
                 <h3 class="text-xl mb-5">Transaction builder</h3>
             </header>
             <TransactionFormVue
                 @propose-transaction="handleProposeTransaction"
+                :pending="pendingNewTransaction"
+                :error="transactionFormErr"
             />
         </div>
     </div>

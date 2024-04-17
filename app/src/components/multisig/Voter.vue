@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "vue";
 import Button from "../Button.vue";
+import { shortenAddress } from "@/utils";
 
 const props = defineProps({
     voter: {
@@ -8,10 +8,6 @@ const props = defineProps({
         required: true,
     },
 });
-
-function shortenAddress(address) {
-    return `${address.slice(0, 8)}...${address.slice(address.length - 8)}`;
-}
 
 defineEmits(["remove-voter"]);
 </script>
@@ -25,6 +21,7 @@ defineEmits(["remove-voter"]);
         <Button
             class="ml-5 bg-slate-500"
             @click="$emit('remove-voter', voter.address)"
+            v-show="voter.removable"
             >Remove</Button
         >
     </div>

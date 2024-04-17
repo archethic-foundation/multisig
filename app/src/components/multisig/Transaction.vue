@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watchEffect } from "vue";
 import Button from "../Button.vue";
-import List from "../List.vue";
+import { shortenAddress } from "@/utils";
 
 const props = defineProps({
     transaction: {
@@ -16,6 +16,10 @@ const props = defineProps({
         type: Number,
         required: true,
     },
+    pendingConfirmation: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 import { useConnectionStore } from "@/stores/connection";
@@ -25,10 +29,6 @@ const nbApprovals = computed(() => {
     return props.transaction.confirmations.length;
 });
 const showDetails = ref(false);
-
-function shortenAddress(address) {
-    return `${address.slice(0, 8)}...${address.slice(address.length - 8)}`;
-}
 
 const toBeConfirmed = ref(false);
 
@@ -66,7 +66,11 @@ const confirmations = computed(() => {
     });
 });
 
-defineEmits(["confirm-transaction"]);
+const emit = defineEmits(["confirm-transaction"]);
+
+function confirmTransaction() {
+    emit("confirm-transaction", props.transaction.id);
+}
 </script>
 
 <template>
@@ -95,85 +99,54 @@ defineEmits(["confirm-transaction"]);
                 >
 
                 <Button
-                    class="w-20 text-xs h-8"
+                    class="w-24 text-xs h-8"
                     v-show="toBeConfirmed"
-                    @click="$emit('confirm-transaction', transaction.id)"
-                    >Confirm</Button
+                    @click="confirmTransaction"
+                    :disabled="props.pendingConfirmation"
+                >
+                    <span v-show="!props.pendingConfirmation">Confirm</span>
+                    <span v-show="props.pendingConfirmation"
+                        >Confirming...</span
+                    ></Button
                 >
             </div>
         </div>
 
         <div v-show="showDetails">
             <div class="mt-2 flex flex-col gap">
-                <div
-                    v-show="
-                        transaction.ucoTransfers &&
-                        transaction.ucoTransfers.length > 0
-                    "
-                >
-                    <List :items="transaction.ucoTransfers">
-                        <template #item="transfer">
-                            <p
-                                class="mb-2 text-xs content-center text-slate-500"
+                <div v-for="transfer in transaction.ucoTransfers">
+                    <p class="mb-2 text-xs content-center text-slate-500">
+                        <span>Send {{ transfer.amount }} UCO to</span>
+                        <span class="ml-1"
+                            >{{ shortenAddress(transfer.to) }}
+                        </span>
+                    </p>
+                </div>
+
+                <div v-for="transfer in transaction.tokenTransfers">
+                    <div class="flex">
+                        <p class="mb-2 text-xs content-center text-slate-500">
+                            <span
+                                >Send {{ transfer.amount }} token (
+                                shortenAddress(transfer.token_address)) to</span
                             >
-                                <span>Send {{ transfer.amount }} UCO to</span>
-                                <span class="ml-1"
-                                    >{{ shortenAddress(transfer.to) }}
-                                </span>
-                            </p>
-                        </template>
-                    </List>
+                            <span class="ml-1"
+                                >{{ shortenAddress(transfer.to) }}
+                            </span>
+                        </p>
+                    </div>
                 </div>
 
-                <div
-                    v-show="
-                        transaction.tokenTransfers &&
-                        transaction.tokenTransfers.length > 0
-                    "
-                >
-                    <List :items="transaction.tokenTransfers">
-                        <template #item="transfer">
-                            <div class="flex">
-                                <p
-                                    class="mb-2 text-xs content-center text-slate-500"
-                                >
-                                    <span
-                                        >Send {{ transfer.amount }} token (
-                                        shortenAddress(transfer.token_address))
-                                        to</span
-                                    >
-                                    <span class="ml-1"
-                                        >{{ shortenAddress(transfer.to) }}
-                                    </span>
-                                </p>
-                            </div>
-                        </template>
-                    </List>
-                </div>
-
-                <div
-                    v-show="
-                        transaction.recipients &&
-                        transaction.recipients.length > 0
-                    "
-                >
-                    <List :items="transaction.recipients">
-                        <template #item="call">
-                            <div class="flex">
-                                <p
-                                    class="text-xs content-center text-slate-500"
-                                >
-                                    Execute
-                                    <span class="font-bold">{{
-                                        call.action
-                                    }}</span>
-                                    on {{ shortenAddress(call.address) }} with
-                                    arguments:
-                                    <code>{{ call.args }}</code>
-                                </p>
-                            </div>
-                        </template>
-                    </List>
+                <div v-for="call in transaction.recipients">
+                    <div class="flex">
+                        <p class="text-xs content-center text-slate-500">
+                            Execute
+                            <span class="font-bold">{{ call.action }}</span>
+                            on {{ shortenAddress(call.address) }} with
+                            arguments:
+                            <code>{{ call.args }}</code>
+                        </p>
+                    </div>
                 </div>
 
                 <div v-show="transaction.code != ''">
@@ -189,38 +162,23 @@ defineEmits(["confirm-transaction"]);
                         transaction.newVoters.length > 0
                     "
                 >
-                    <List :items="transaction.newVoters">
-                        <template #item="voter">
-                            <p
-                                class="mb-2 text-xs content-center text-slate-500"
-                            >
-                                <span
-                                    >Authorize voter
-                                    {{ shortenAddress(voter.address) }}
-                                </span>
-                            </p>
-                        </template>
-                    </List>
+                    <div v-for="voter in transaction.newVoters">
+                        <p class="mb-2 text-xs content-center text-slate-500">
+                            <span
+                                >Authorize voter
+                                {{ shortenAddress(voter.address) }}
+                            </span>
+                        </p>
+                    </div>
                 </div>
 
-                <div
-                    v-show="
-                        transaction.removedVoters &&
-                        transaction.removedVoters.length > 0
-                    "
-                >
-                    <List :items="transaction.removedVoters">
-                        <template #item="voter">
-                            <p
-                                class="mb-2 text-xs content-center text-slate-500"
-                            >
-                                <span
-                                    >Remove voter
-                                    {{ shortenAddress(voter.address) }}
-                                </span>
-                            </p>
-                        </template>
-                    </List>
+                <div v-for="voter in transaction.removedVoters">
+                    <p class="mb-2 text-xs content-center text-slate-500">
+                        <span
+                            >Remove voter
+                            {{ shortenAddress(voter.address) }}
+                        </span>
+                    </p>
                 </div>
 
                 <div v-show="transaction.newThreshold">
@@ -231,7 +189,7 @@ defineEmits(["confirm-transaction"]);
                 </div>
             </div>
 
-            <div class="mt-2 flex-col gap mt-5">
+            <div class="mt-2 flex-col gap mt-5" v-if="confirmations.length > 0">
                 <p class="text-xs mb-2">Confirmations</p>
                 <p
                     class="text-xs text-slate-500"
