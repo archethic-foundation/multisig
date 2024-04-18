@@ -1,29 +1,25 @@
 <script setup>
 import { shortenAddress } from "@/utils";
+import Asset from "@/components/multisig/Asset.vue";
 
 const props = defineProps({
-    ucoBalance: {
-        type: Number,
-        default: 0,
-    },
-    tokenBalance: {
-        type: Array,
-        default: [],
+    balance: {
+        type: Object,
+        default: {
+            uco: 0,
+            tokens: [],
+        },
     },
 });
 </script>
 
 <template>
-    <div class="flex-col">
-        <div class="flex">
-            <p class="text-slate-500">UCO</p>
-            <p class="text-slate-500 ml-3">{{ props.ucoBalance }}</p>
-        </div>
-        <div v-for="token in props.tokenBalance" class="flex mt-2">
-            <p class="text-slate-500">
-                Token {{ shortenAddress(token.address) }}
-            </p>
-            <p class="text-slate-500 ml-3">{{ token.amount }}</p>
-        </div>
+    <div class="grid grid-cols-10 gap-3">
+        <Asset name="UCO" :amount="props.balance.uco" />
+        <Asset
+            :name="`${token.name} (${token.symbol})`"
+            :amount="token.amount"
+            v-for="token in props.balance.tokens"
+        />
     </div>
 </template>

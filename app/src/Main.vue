@@ -14,14 +14,16 @@ const connectedNetwork = computed(() => {
     if (!connectionStore.endpoint) {
         return;
     }
-    switch (new URL(connectionStore.endpoint).hostname) {
-        case "mainnet":
-            return "MainNet";
-        case "testnet":
-            return "TestNet";
-        default:
-            return "PrivateNet";
+
+    const endpointHostname = new URL(connectionStore.endpoint).hostname;
+    if (endpointHostname.startsWith("mainnet")) {
+        return "MainNet";
     }
+    if (endpointHostname.startsWith("testnet")) {
+        return "TestNet";
+    }
+
+    return "PrivateNet";
 });
 const route = useRouter();
 

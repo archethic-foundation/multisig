@@ -7,7 +7,9 @@ import Transaction from "@/components/multisig/Transaction.vue";
 import Button from "@/components/Button.vue";
 import TransactionFormVue from "@/components/multisig/TransactionForm.vue";
 import Setup from "@/components/multisig/Setup.vue";
-import Assets from "@/components/multisig/Assets.vue";
+import Header from "@/components/multisig/Header.vue";
+import Warning from "@/components/Warning.vue";
+import Loading from "@/components/Loading.vue";
 
 import { useConnectionStore } from "@/stores/connection";
 
@@ -80,12 +82,22 @@ async function loadDetails() {
 
 async function loadBalance() {
     const multisigBalance = await archethic.network.getBalance(contractAddress);
-    balance.value = {
-        uco: Utils.fromBigInt(multisigBalance.uco),
-        token: multisigBalance.token.map((token) => {
+
+    const tokens = await Promise.all(
+        multisigBalance.token.map(async (token) => {
+            const tokenDetails = await archethic.network.getToken(
+                token.address,
+            );
             token.amount = Utils.fromBigInt(token.amount);
+            token.name = tokenDetails.name;
+            token.symbol = tokenDetails.symbol;
             return token;
         }),
+    );
+
+    balance.value = {
+        uco: Utils.fromBigInt(multisigBalance.uco),
+        tokens: tokens,
     };
 }
 
@@ -375,23 +387,14 @@ function handleNewConfirmationThreshold(newRequiredConfirmations) {
 <template>
     <div class="flex flex-col p-10">
         <div class="bg-white shadow-xl p-5 rounded-md w-full flex-col">
-            <h2 class="text-xl text-slate-600 mb-10">
-                Vault's address: {{ contractAddress }}
-            </h2>
-            <p v-show="mainErr != ''" class="text-sm text-red-800">
-                {{ mainErr }}
-            </p>
-            <p v-if="loadingAssets" class="text-sm text-slate-500">
-                Loading...
-            </p>
-            <div v-show="!loadingAssets && mainErr == ''">
-                <p class="mt-10 mb-2">Assets</p>
-                <Assets
-                    v-if="!loadingAssets"
-                    :ucoBalance="balance.uco"
-                    :tokenBalance="balance.token"
-                />
-            </div>
+            <Header
+                :loading="loadingAssets"
+                :address="contractAddress"
+                :endpoint="connectionStore.endpoint"
+                :balance="balance"
+            />
+
+            <Warning v-show="mainErr != ''" class="mt-5">{{ mainErr }}</Warning>
         </div>
 
         <div class="flex justify-between gap-5 mt-5">
@@ -399,9 +402,7 @@ function handleNewConfirmationThreshold(newRequiredConfirmations) {
                 <header class="flex justify-between place-items-center">
                     <h3 class="text-xl mb-5">Transactions</h3>
                 </header>
-                <p v-if="loadingTransactions" class="text-sm text-slate-500">
-                    Loading...
-                </p>
+                <Loading v-if="loadingTransactions" />
                 <Transaction
                     v-for="transaction in transactions"
                     :transaction="transaction"
@@ -413,12 +414,9 @@ function handleNewConfirmationThreshold(newRequiredConfirmations) {
                     @confirm-transaction="handleTransactionConfirmation"
                 />
 
-                <p
-                    class="text-sm text-red-800 mt-5"
-                    v-show="confirmationError != ''"
-                >
-                    {{ confirmationError }}
-                </p>
+                <Warning v-show="confirmationError != ''" class="mt-5">{{
+                    confirmationError
+                }}</Warning>
             </div>
             <div class="w-3/5 bg-white shadow-xl p-5 rounded-md">
                 <header class="mb-5 flex justify-between place-items-center">
@@ -435,9 +433,7 @@ function handleNewConfirmationThreshold(newRequiredConfirmations) {
                         <span v-show="pendingNewSetup">Pending...</span>
                     </Button>
                 </header>
-                <p v-if="loadingSetup" class="text-sm text-slate-500">
-                    Loading...
-                </p>
+                <Loading v-if="loadingSetup" />
                 <Setup
                     :voters="voters"
                     :requiredConfirmations="requiredConfirmations"
@@ -446,12 +442,9 @@ function handleNewConfirmationThreshold(newRequiredConfirmations) {
                     v-if="!loadingSetup && mainErr == ''"
                     :canEdit="canEdit && !pendingNewSetup"
                 />
-                <p
-                    class="text-sm text-red-800 mt-5"
-                    v-show="newSetupError != ''"
-                >
-                    {{ newSetupError }}
-                </p>
+                <Warning v-show="newSetupError != ''" class="mt-5">{{
+                    newSetupError
+                }}</Warning>
             </div>
         </div>
         <div
@@ -464,8 +457,11 @@ function handleNewConfirmationThreshold(newRequiredConfirmations) {
             <TransactionFormVue
                 @propose-transaction="handleProposeTransaction"
                 :pending="pendingNewTransaction"
-                :error="transactionFormErr"
             />
+
+            <Warning v-show="transactionFormErr != ''" class="mt-5">{{
+                transactionFormErr
+            }}</Warning>
         </div>
     </div>
 </template>

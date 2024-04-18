@@ -6,10 +6,6 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
-    error: {
-        type: String,
-        default: "",
-    },
 });
 
 import { ref, computed } from "vue";
@@ -187,10 +183,6 @@ function reset() {
                 >Reset</Button
             >
         </header>
-
-        <p class="text-sm text-red-800 mt-5" v-show="props.error != ''">
-            {{ props.error }}
-        </p>
 
         <div class="mt-5 flex flex-col gap-5" v-show="showUcoTransferForm">
             <p class="text-xs text-slate-500">Add new UCO's transfer</p>
