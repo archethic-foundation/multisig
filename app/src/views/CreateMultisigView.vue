@@ -1,6 +1,8 @@
 <script setup>
-import Button from "../components/Button.vue";
-import Setup from "../components/multisig/Setup.vue";
+import Button from "@/components/Button.vue";
+import Warning from "@/components/Warning.vue";
+
+import Setup from "@/components/multisig/Setup.vue";
 import { Crypto, Utils } from "@archethicjs/sdk";
 
 import { ref, onMounted } from "vue";
@@ -151,9 +153,9 @@ async function getSCOwnnership(archethic, seed) {
                     <span v-show="pendingDeployment">Pending...</span>
                 </Button>
             </div>
-            <p class="text-sm text-red-800 mt-5" v-show="deployErrMsg != ''">
-                {{ deployErrMsg }}
-            </p>
+            <Warning v-show="deployErrMsg != ''" class="mt-5">{{
+                deployErrMsg
+            }}</Warning>
         </div>
     </div>
 </template>

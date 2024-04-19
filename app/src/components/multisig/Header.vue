@@ -1,6 +1,10 @@
 <script setup>
 import Assets from "@/components/multisig/Assets.vue";
 import Loading from "@/components/Loading.vue";
+import Button from "@/components/Button.vue";
+import { shortenAddress } from "@/utils";
+import { useVaultStore } from "@/stores/vaults";
+import { computed, ref, onMounted } from "vue";
 
 const props = defineProps({
     address: {
@@ -20,17 +24,63 @@ const props = defineProps({
         required: true,
     },
 });
+
+const vault = ref(undefined);
+const vaults = ref([]);
+const vaultName = ref("");
+const vaultStore = useVaultStore();
+
+const alreadyBookmarked = computed(() => vault.value !== undefined);
+const vaultTitle = computed(() => {
+    if (vaultName.value == "") {
+        return "Give it a name";
+    }
+    return vaultName.value;
+});
+
+function setVaultName() {
+    vaultStore.nameVault(props.address, vaultName.value);
+}
+
+onMounted(() => {
+    vaults.value = vaultStore.getVaults();
+    vault.value = vaults.value.find((v) => {
+        return v.address.toUpperCase() == props.address.toUpperCase();
+    });
+    vaultName.value = vault.value.name || "";
+});
+
+function bookmarkVault() {
+    vaultStore.addVault(props.address);
+    vaults.value = vaultStore.getVaults();
+}
 </script>
 
 <template>
-    <h2 class="text-xl text-slate-600 mb-10">
-        Vault's address:
-        <a
-            :href="`${props.endpoint}/explorer/chain?address=${props.address}`"
-            target="_blank"
-            >{{ props.address }}</a
-        >
-    </h2>
+    <div class="flex justify-between">
+        <h2 class="text-xl text-slate-600">{{ props.address }}</h2>
+        <input
+            class="text-slate-500 bg-transparent border[#ddd] outline-none text-md ml-5 border-b"
+            v-model="vaultName"
+            :placeholder="vaultTitle"
+            @keyup.enter="setVaultName"
+            @change="setVaultName"
+        />
+
+        <div class="flex-1"></div>
+        <div class="flex gap-2">
+            <a
+                :href="`${props.endpoint}/explorer/chain?address=${props.address}`"
+                class="content-center"
+                target="_blank"
+                ><Button>Explore on-chain</Button></a
+            >
+            <Button v-show="!alreadyBookmarked" @click="bookmarkVault"
+                >Bookmark it</Button
+            >
+        </div>
+    </div>
+
     <Loading v-if="props.loading" />
     <div v-show="!props.loading">
         <p class="mt-10 mb-2 text-slate-500">Assets</p>

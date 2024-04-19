@@ -19,7 +19,7 @@ const transactions = ref([]);
 const voters = ref([]);
 const requiredConfirmations = ref(0);
 const hasSetupChanged = ref(false);
-const balance = ref({ uco: 0, tokens: {} });
+const balance = ref({ uco: 0, tokens: [] });
 const initialSetup = ref({});
 
 const mainErr = ref("");
@@ -45,6 +45,8 @@ const canEdit = computed(() => {
         }) != undefined
     );
 });
+
+const resetForm = ref(false);
 
 const connectionStore = useConnectionStore();
 
@@ -294,6 +296,7 @@ async function handleProposeTransaction(proposeTransaction, proposeSetup) {
 
     try {
         await proposeNewTransaction(proposeTransaction, proposeSetup);
+        resetForm.value = true;
     } catch (e) {
         transactionFormErr.value = e;
     } finally {
@@ -456,7 +459,9 @@ function handleNewConfirmationThreshold(newRequiredConfirmations) {
             </header>
             <TransactionFormVue
                 @propose-transaction="handleProposeTransaction"
+                :tokens="balance.tokens"
                 :pending="pendingNewTransaction"
+                :toReset="resetForm"
             />
 
             <Warning v-show="transactionFormErr != ''" class="mt-5">{{

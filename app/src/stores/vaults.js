@@ -18,10 +18,21 @@ function removeVault(vaultAddress) {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newVaults));
 }
 
+function nameVault(vaultAddress, vaultName) {
+  const vaults = getVaults().map((v) => {
+    if (v.address == vaultAddress) {
+      v.name = vaultName;
+    }
+    return v;
+  });
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(vaults));
+}
+
 export const useVaultStore = defineStore("vaults", () => {
   return {
     getVaults,
     addVault,
     removeVault,
+    nameVault,
   };
 });

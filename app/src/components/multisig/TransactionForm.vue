@@ -1,8 +1,27 @@
 <script setup>
+import { watch } from "vue";
+import Header from "@/components/multisig/TransactionForm/Header.vue";
+
+import UCOTransferInput from "@/components/multisig/TransactionForm/UCOTransferInput.vue";
+import TokenTransferInput from "@/components/multisig/TransactionForm/TokenTransferInput.vue";
+import ContractCallInput from "@/components/multisig/TransactionForm/ContractCallInput.vue";
+
+import UCOTransferItem from "@/components/multisig/TransactionForm/UCOTransferItem.vue";
+import TokenTransferItem from "@/components/multisig/TransactionForm/TokenTransferItem.vue";
+import ContractCallItem from "@/components/multisig/TransactionForm/ContractCallItem.vue";
+
 const emit = defineEmits(["proposeTransaction"]);
 
 const props = defineProps({
     pending: {
+        type: Boolean,
+        default: false,
+    },
+    tokens: {
+        type: Array,
+        default: [],
+    },
+    toReset: {
         type: Boolean,
         default: false,
     },
@@ -24,16 +43,6 @@ const showTokenTransferForm = ref(false);
 const showContractCallForm = ref(false);
 const showContractCodeForm = ref(false);
 
-const ucoRecipient = ref("");
-const ucoAmount = ref(1);
-
-const tokenRecipient = ref("");
-const tokenAddress = ref("");
-const tokenAmount = ref(1);
-
-const contractRecipient = ref("");
-const contractAction = ref("");
-const contractArgs = ref([]);
 const codeSrc = ref("");
 
 const canProposeTransaction = computed(() => {
@@ -61,37 +70,29 @@ function pickForm(form) {
     formsChoices[form].value = true;
 }
 
-function addUcoTransfer() {
+function addUcoTransfer({ to, amount }) {
     transaction.value.ucoTransfers.push({
-        to: ucoRecipient.value,
-        amount: ucoAmount.value,
+        to: to,
+        amount: amount,
     });
-    ucoRecipient.value = "";
-    ucoAmount.value = 1;
     showUcoTransferForm.value = false;
 }
 
-function addTokenTransfer() {
+function addTokenTransfer({ to, amount, tokenAddress }) {
     transaction.value.tokenTransfers.push({
-        to: tokenRecipient.value,
-        tokenAddress: tokenAddress.value,
-        amount: tokenAmount.value,
+        to: to,
+        tokenAddress: tokenAddress,
+        amount: amount,
     });
-    tokenRecipient.value = "";
-    tokenAddress.value = "";
-    tokenAmount.value = 1;
     showTokenTransferForm.value = false;
 }
 
-function addContractCall() {
+function addContractCall({ address, action, args }) {
     transaction.value.contractCalls.push({
-        address: contractRecipient.value,
-        action: contractAction.value,
-        args: contractArgs.value,
+        address: address,
+        action: action,
+        args: args,
     });
-    contractRecipient.value = "";
-    contractAction.value = "";
-    contractArgs.value = [];
     showContractCallForm.value = false;
 }
 
@@ -149,157 +150,37 @@ function reset() {
         code: "",
     };
 }
+
+watch(
+    () => props.toReset,
+    () => {
+        reset();
+    },
+);
 </script>
 
 <template>
     <div class="">
-        <header class="flex place-items-center gap-5">
-            <Button class="!bg-slate-400 h-9" @click="pickForm('uco')"
-                >Add UCO transfer</Button
-            >
-            <Button class="!bg-slate-400 h-9" @click="pickForm('token')"
-                >Add token transfer</Button
-            >
-            <Button class="!bg-slate-400 h-9" @click="pickForm('contract')"
-                >Add smart contract call</Button
-            >
-            <Button class="!bg-slate-400 h-9" @click="pickForm('code')"
-                >Set contract code</Button
-            >
-            <div class="flex-1"></div>
-            <Button
-                class="h-9"
-                @click="$emit('proposeTransaction', transaction)"
-                v-show="canProposeTransaction"
-                :disabled="props.pending"
-            >
-                <span v-if="props.pending">Pending...</span>
-                <span v-if="!props.pending">Propose transaction</span>
-            </Button>
-            <Button
-                class="text-xs h-9 !bg-slate-500"
-                @click="reset"
-                v-show="!props.pending && canProposeTransaction"
-                >Reset</Button
-            >
-        </header>
-
+        <Header
+            :edited="canProposeTransaction"
+            :pending="props.pending"
+            @pick-form="pickForm"
+            @propose-transaction="$emit('proposeTransaction', transaction)"
+            @reset="reset"
+        />
         <div class="mt-5 flex flex-col gap-5" v-show="showUcoTransferForm">
-            <p class="text-xs text-slate-500">Add new UCO's transfer</p>
-            <div>
-                <label for="ucoRecipient" class="text-sm">Recipient</label>
-                <input
-                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
-                    placeholder="Enter recipient address"
-                    v-model="ucoRecipient"
-                    id="ucoRecipient"
-                />
-            </div>
-
-            <div>
-                <label for="ucoAmount" class="text-sm">Amount to send</label>
-                <input
-                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
-                    placeholder="Enter the amount of UCO"
-                    type="number"
-                    min="1"
-                    step="1"
-                    id="ucoAmount"
-                    v-model="ucoAmount"
-                />
-            </div>
-
-            <div>
-                <Button @click="addUcoTransfer">Submit</Button>
-            </div>
+            <UCOTransferInput @submit="addUcoTransfer" />
         </div>
 
         <div class="mt-5 flex flex-col gap-5" v-show="showTokenTransferForm">
-            <p class="text-xs text-slate-500">Add new token's transfer</p>
-            <div>
-                <label for="tokenRecipient" class="text-sm">Recipient</label>
-                <input
-                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
-                    placeholder="Enter recipient address"
-                    v-model="tokenRecipient"
-                    id="tokenRecipient"
-                />
-            </div>
-
-            <div>
-                <label for="tokenAddress" class="text-sm"
-                    >Token's address</label
-                >
-                <input
-                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
-                    placeholder="Enter token's' address"
-                    v-model="tokenAddress"
-                    id="tokenAddress"
-                />
-            </div>
-
-            <div>
-                <label for="tokenAmount" class="text-sm">Amount to send</label>
-                <input
-                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
-                    placeholder="Enter the amount of token"
-                    type="number"
-                    min="1"
-                    step="1"
-                    id="tokenAmount"
-                    v-model="tokenAmount"
-                />
-            </div>
-
-            <div>
-                <Button class="text-xs h-8" @click="addTokenTransfer"
-                    >Submit</Button
-                >
-            </div>
+            <TokenTransferInput
+                :tokens="props.tokens"
+                @submit="addTokenTransfer"
+            />
         </div>
 
         <div class="mt-5 flex flex-col gap-5" v-show="showContractCallForm">
-            <p class="text-xs text-slate-500">Add smart contract call</p>
-            <div>
-                <label for="contractRecipient" class="text-sm">Recipient</label>
-                <input
-                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
-                    placeholder="Enter recipient address"
-                    v-model="contractRecipient"
-                    id="contractRecipient"
-                />
-            </div>
-
-            <div>
-                <label for="contractAction" class="text-sm"
-                    >Action's name</label
-                >
-                <input
-                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
-                    placeholder="Enter contract's action"
-                    v-model="contractAction"
-                    id="contractAction"
-                />
-            </div>
-
-            <div>
-                <label for="contractArgs" class="text-sm"
-                    >Arguments to pass</label
-                >
-                <input
-                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
-                    placeholder="Enter the arguments"
-                    type="text"
-                    id="contractArgs"
-                    v-model="contractArgs"
-                />
-            </div>
-
-            <div>
-                <Button class="text-xs h-8" @click="addContractCall"
-                    >Submit</Button
-                >
-            </div>
+            <ContractCallInput @submit="addContractCall" />
         </div>
 
         <div class="mt-5 flex flex-col gap-5" v-show="showContractCodeForm">
@@ -327,12 +208,7 @@ function reset() {
                 <div class="gap-5">
                     <div v-for="transfer in transaction.ucoTransfers">
                         <div class="mb-2 flex">
-                            <p
-                                class="text-sm content-center text-slate-500 w-1/4"
-                            >
-                                Send {{ transfer.amount }} UCO to
-                                {{ shortenAddress(transfer.to) }}
-                            </p>
+                            <UCOTransferItem :transfer="transfer" />
                             <Button
                                 class="ml-5 text-xs h-8"
                                 @click="removeUCOTransfer(transfer)"
@@ -351,14 +227,7 @@ function reset() {
                 <div class="gap-5">
                     <div v-for="transfer in transaction.tokenTransfers">
                         <div class="mb-2 flex">
-                            <p
-                                class="text-sm content-center text-slate-500 w-1/4"
-                            >
-                                Send {{ transfer.amount }}
-                                {{ shortenAddress(transfer.tokenAddress) }}
-                                to
-                                {{ shortenAddress(transfer.to) }}
-                            </p>
+                            <TokenTransferItem :transfer="transfer" />
                             <Button
                                 class="ml-5 text-xs h-8"
                                 @click="removeTokenTransfer(transfer)"
@@ -377,15 +246,7 @@ function reset() {
                 <div class="gap-5">
                     <div v-for="call in transaction.contractCalls">
                         <div class="flex mb-2">
-                            <p
-                                class="text-sm content-center text-slate-500 w-1/4"
-                            >
-                                Execute
-                                <span class="font-bold">{{ call.action }}</span>
-                                on {{ shortenAddress(call.address) }} with
-                                arguments:
-                                <code>{{ call.args }}</code>
-                            </p>
+                            <ContractCallItem :call="call" />
                             <Button
                                 class="ml-5 text-xs h-8"
                                 @click="removeContractCall(call)"

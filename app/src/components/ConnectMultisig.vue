@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "vue";
 import { Utils } from "@archethicjs/sdk";
+import Warning from "@/components/Warning.vue";
 
 import Button from "./Button.vue";
 
@@ -29,9 +30,7 @@ function connect() {
             v-model="multisig"
             @keyup.enter="connect"
         />
-        <p v-show="errMsg != ''" class="text-xs text-red-500 mt-1">
-            {{ errMsg }}
-        </p>
+        <Warning v-show="errMsg != ''" class="mt-1">{{ errMsg }}</Warning>
         <div class="w-1/6 mt-5">
             <Button @click="connect">Connect</Button>
         </div>

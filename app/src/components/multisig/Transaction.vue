@@ -2,6 +2,7 @@
 import { computed, ref, watchEffect } from "vue";
 import Button from "../Button.vue";
 import { shortenAddress } from "@/utils";
+import { Utils } from "@archethicjs/sdk";
 
 const props = defineProps({
     transaction: {
@@ -29,6 +30,7 @@ const nbApprovals = computed(() => {
     return props.transaction.confirmations.length;
 });
 const showDetails = ref(false);
+const resolvedTokens = ref([]);
 
 const toBeConfirmed = ref(false);
 
@@ -55,6 +57,27 @@ watchEffect(async () => {
         !alreadyVoted;
 
     toBeConfirmed.value = confirmation;
+
+    resolvedTokens.value = await Promise.all(
+        props.transaction.tokenTransfers.map(
+            async ({ to, amount, tokenAddress }) => {
+                const res = await archethic.network.rawGraphQLQuery(
+                    `query {
+            token(address: "${tokenAddress}") { name }
+          }`,
+                );
+                if (res.token) {
+                    return {
+                        to,
+                        tokenAddress,
+                        amount,
+                        tokenName: res.token.name,
+                    };
+                }
+                return { to, tokenAddress, amount };
+            },
+        ),
+    );
 });
 
 const confirmations = computed(() => {
@@ -116,19 +139,26 @@ function confirmTransaction() {
             <div class="mt-2 flex flex-col gap">
                 <div v-for="transfer in transaction.ucoTransfers">
                     <p class="mb-2 text-xs content-center text-slate-500">
-                        <span>Send {{ transfer.amount }} UCO to</span>
+                        <span
+                            >Send {{ transfer.amount }}
+                            <span class="font-bold">UCO</span> to</span
+                        >
                         <span class="ml-1"
                             >{{ shortenAddress(transfer.to) }}
                         </span>
                     </p>
                 </div>
 
-                <div v-for="transfer in transaction.tokenTransfers">
+                <div v-for="transfer in resolvedTokens">
                     <div class="flex">
                         <p class="mb-2 text-xs content-center text-slate-500">
                             <span
-                                >Send {{ transfer.amount }} token (
-                                shortenAddress(transfer.token_address)) to</span
+                                >Send {{ transfer.amount }}
+                                <span class="font-bold">{{
+                                    transfer.tokenName
+                                }}</span>
+                                ({{ shortenAddress(transfer.tokenAddress) }})
+                                to</span
                             >
                             <span class="ml-1"
                                 >{{ shortenAddress(transfer.to) }}
