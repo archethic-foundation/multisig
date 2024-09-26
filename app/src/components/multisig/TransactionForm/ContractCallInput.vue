@@ -104,7 +104,6 @@ async function fetchContractActions() {
         </select>
     </div>
 
-    {{ availableArgs.length }}
     <div v-show="contractAction != '' && availableArgs.length > 0">
         <label for="contractArgs" class="text-sm">Arguments</label>
         <div v-for="(arg, index) in availableArgs" class="p-1 text-sm flex">

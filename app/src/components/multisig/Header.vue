@@ -47,7 +47,8 @@ onMounted(() => {
     vault.value = vaults.value.find((v) => {
         return v.address.toUpperCase() == props.address.toUpperCase();
     });
-    vaultName.value = vault.value.name || "";
+    vaultName.value = vault.value ? vault.value.name : "";
+    
 });
 
 function bookmarkVault() {
