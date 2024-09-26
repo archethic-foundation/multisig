@@ -22,7 +22,7 @@ export const useConnectionStore = defineStore("connection", () => {
       return await connect();
     }
     connecting.value = true;
-    const archethic = await getArchethicConnection();
+    const archethic = await getWalletConnection();
 
     const { accountAddress: currentAddress, accountName: currentName } =
       await loadAccount(
@@ -53,8 +53,8 @@ export const useConnectionStore = defineStore("connection", () => {
   };
 });
 
-async function getArchethicConnection() {
-  const archethic = new Archethic("ws://127.0.0.1:12345");
+async function getWalletConnection() {
+  const archethic = new Archethic(undefined); // To mention the wallet connection is used
   archethic.rpcWallet.setOrigin({ name: "Archethic Multisig CLI" });
   console.log("Connecting to Archethic's wallet");
   await archethic.connect();

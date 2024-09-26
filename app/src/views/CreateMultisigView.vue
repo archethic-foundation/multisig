@@ -56,6 +56,7 @@ async function deployMultisig() {
 
         multisigTx
             .on("requiredConfirmation", (nbConf) => {
+                pendingDeployment.value = false;
                 vaultStore.addVault(Utils.uint8ArrayToHex(multisigGenesis));
                 router.push({
                     name: "app",
@@ -73,7 +74,6 @@ async function deployMultisig() {
             .send();
     } catch (e) {
         deployErrMsg.value = e;
-    } finally {
         pendingDeployment.value = false;
     }
 }
@@ -82,7 +82,7 @@ async function fundSC(archethic, multisigGenesis) {
     const transferTx = archethic.transaction
         .new()
         .setType("transfer")
-        .addUCOTransfer(multisigGenesis, Utils.toBigInt(1));
+        .addUCOTransfer(multisigGenesis, Utils.parseBigInt("1"));
 
     console.log("Sending 1 UCO to fund mulitisig chain...");
     await archethic.rpcWallet.sendTransaction(transferTx);

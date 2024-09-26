@@ -54,7 +54,7 @@ let archethic;
 const contractAddress = route.params.contractAddress;
 
 onMounted(async () => {
-    archethic = await connectionStore.connect();
+   archethic = await connectionStore.connect();
     await loadDetails();
 
     watch([requiredConfirmations, () => voters.value.length], () => {
@@ -90,7 +90,7 @@ async function loadBalance() {
             const tokenDetails = await archethic.network.getToken(
                 token.address,
             );
-            token.amount = Utils.fromBigInt(token.amount);
+            token.amount = parseFloat(Utils.formatBigInt(token.amount));
             token.name = tokenDetails.name;
             token.symbol = tokenDetails.symbol;
             return token;
@@ -98,7 +98,7 @@ async function loadBalance() {
     );
 
     balance.value = {
-        uco: Utils.fromBigInt(multisigBalance.uco),
+        uco: parseFloat(Utils.formatBigInt(multisigBalance.uco)),
         tokens: tokens,
     };
 }
