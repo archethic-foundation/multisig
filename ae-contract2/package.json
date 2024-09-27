@@ -1,0 +1,25 @@
+{
+  "name": "ae-contract",
+  "description": "ae-contract",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "aewasm build",
+    "test": "npm run build && vitest run"
+  },
+  "dependencies": {
+    "@archethicjs/ae-contract-as": "^1.0.0",
+    "@archethicjs/ae-contract-test": "^1.0.0",
+    "assemblyscript": "^0.27.29"
+  },
+  "devDependencies": {
+    "@archethicjs/sdk": "^1.21.2",
+    "@types/node": "^22.1.0",
+    "typescript": "^5.5.4",
+    "visitor-as": "^0.11.4",
+    "vitest": "^2.1.1"
+  },
+  "overrides": {
+    "assemblyscript": "$assemblyscript"
+  }
+}
