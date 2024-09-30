@@ -3,11 +3,8 @@ import {
     ContextWithTransaction,
     JSON,
     ContextWithTransactionAndParams,
-    getGenesisAddress,
-    getPreviousAddress,
     TriggerType,
     getFirstTransactionAddress,
-    log,
     Address
 } from "@archethicjs/ae-contract-as/assembly";
 import { InitParams, ProposalParams, ConfirmationParams, State, Status, Transaction, VoterSet } from "./types";

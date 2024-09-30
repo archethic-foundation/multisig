@@ -68,11 +68,39 @@ describe("confirmTransaction", () => {
 
         const initialVoters = [
             new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter1"))),
-            new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter2")))
+            new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter2"))),
+            new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter3")))
         ]
 
         const contract = await getContract(wasmBuffer, {
-            transaction: generateTransaction("contract", 0, { content: JSON.stringify({ voters: initialVoters }) }, TransactionType.Contract),
+            transaction: generateTransaction("contract", 0, { content: JSON.stringify({ voters: initialVoters, confirmationThreshold: 2 }) }, TransactionType.Contract),
+        });
+
+        const proposeTx = generateTransaction("voter1", 0)
+        contract.proposeTransaction({
+            txData: { content: "hello" }
+        }, {
+            transaction: proposeTx
+        })
+
+        const confirmTx = generateTransaction("voter2", 0)
+        const result = contract.confirmTransaction({ transactionId: 1}, { transaction: confirmTx })
+        expect(contract.state.transactions["1"].confirmations.length).toBe(1)
+        expect(contract.state.transactions["1"].confirmations[0].hex).toBe(confirmTx.address.hex)
+        expect(contract.state.transactions["1"].status).toBe("pending")
+    })
+
+    it("should return transaction when threshold is reached", async () => {
+        const wasmBuffer = readFileSync("./dist/contract.wasm");
+
+        const initialVoters = [
+            new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter1"))),
+            new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter2"))),
+            new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter3")))
+        ]
+
+        const contract = await getContract(wasmBuffer, {
+            transaction: generateTransaction("contract", 0, { content: JSON.stringify({ voters: initialVoters, confirmationThreshold: 2 }) }, TransactionType.Contract),
         });
 
         const proposeTx = generateTransaction("voter1", 0)
@@ -86,7 +114,16 @@ describe("confirmTransaction", () => {
         contract.confirmTransaction({ transactionId: 1}, { transaction: confirmTx })
         expect(contract.state.transactions["1"].confirmations.length).toBe(1)
         expect(contract.state.transactions["1"].confirmations[0].hex).toBe(confirmTx.address.hex)
+        expect(contract.state.transactions["1"].status).toBe("pending")
+
+        const confirmTx2 = generateTransaction("voter3", 0)
+        const result = contract.confirmTransaction({ transactionId: 1}, { transaction: confirmTx2 })
+        expect(contract.state.transactions["1"].confirmations.length).toBe(2)
+        expect(contract.state.transactions["1"].confirmations[1].hex).toBe(confirmTx2.address.hex)
         expect(contract.state.transactions["1"].status).toBe("done")
+
+
+        expect(result?.transaction.data.content).toBe("hello")
     })
 
     it("should return an error if the transaction doesn't exists", async () => {
