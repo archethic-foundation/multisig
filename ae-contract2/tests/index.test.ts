@@ -30,7 +30,7 @@ describe("proposeTransaction", () => {
         const incomingTx = generateTransaction("voter1", 0)
         contract.proposeTransaction({
             txData: { content: "hello" }
-        }, { 
+        }, {
             transaction: incomingTx
         })
 
@@ -55,7 +55,7 @@ describe("proposeTransaction", () => {
         expect(() => {
             contract.proposeTransaction({
                 txData: { content: "hello" }
-            }, { 
+            }, {
                 transaction: incomingTx
             })
         }).toThrowError("not authorized")
@@ -195,7 +195,68 @@ describe("confirmTransaction", () => {
     })
 })
 
-function generateTransaction(seed, index, data: TransactionData = {}, type = TransactionType.Transfer) {
+describe("getTransactionDetails", () => {
+    it ("should return null if the transaction id doesn't exits", async () => {
+        const wasmBuffer = readFileSync("./dist/contract.wasm");
+
+        const initialVoters = [ new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter1"))) ]
+
+        const contract = await getContract(wasmBuffer, {
+            transaction: generateTransaction("contract", 0, { content: JSON.stringify({ voters: initialVoters }) }, TransactionType.Contract),
+        });
+
+        expect(contract.getTransactionDetails(1)).toBe(null)
+    })
+
+    it ("should return transaction details", async () => {
+        const wasmBuffer = readFileSync("./dist/contract.wasm");
+
+        const initialVoters = [ new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter1"))) ]
+
+        const contract = await getContract(wasmBuffer, {
+            transaction: generateTransaction("contract", 0, { content: JSON.stringify({ voters: initialVoters }) }, TransactionType.Contract),
+        });
+
+        const incomingTx = generateTransaction("voter1", 0)
+        contract.proposeTransaction({
+            txData: { content: "hello" }
+        }, { 
+            transaction: incomingTx
+        })
+
+        const tx: any = contract.getTransactionDetails(1)
+        expect(tx.status).toBe("pending")
+        expect(tx.txData.content).toBe("hello")
+    })
+})
+
+describe("getState", () => {
+    it ("should return contract state", async () => {
+        const wasmBuffer = readFileSync("./dist/contract.wasm");
+
+        const initialVoters = [ new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress("voter1"))) ]
+
+        const contract = await getContract(wasmBuffer, {
+            transaction: generateTransaction("contract", 0, { content: JSON.stringify({ voters: initialVoters }) }, TransactionType.Contract),
+        });
+
+        let state: any = contract.getState()
+        expect(new Address(state.voters[0].hex)).toStrictEqual(initialVoters[0])
+        expect(state.confirmationThreshold).toBe(1)
+
+        const incomingTx = generateTransaction("voter1", 0)
+        contract.proposeTransaction({
+            txData: { content: "hello" }
+        }, {
+            transaction: incomingTx
+        })
+
+        state = contract.getState()
+        expect(state.transactions["1"].txData.content).toBe("hello")
+    })
+})
+
+function generateTransaction(seed: string, index: number, data: TransactionData = {}, type = TransactionType.Transfer) {
     return {
         genesis: new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress(seed, 0))),
         address: new Address(Utils.uint8ArrayToHex(Crypto.deriveAddress(seed, index + 1))),

@@ -5,9 +5,12 @@ import {
     ContextWithTransactionAndParams,
     TriggerType,
     getFirstTransactionAddress,
-    Address
+    Address,
+    ContextWithParams,
+    log,
+    Context
 } from "@archethicjs/ae-contract-as/assembly";
-import { InitParams, ProposalParams, ConfirmationParams, State, Status, Transaction, VoterSet } from "./types";
+import { InitParams, ProposalParams, ConfirmationParams, State, Status, Transaction, VoterSet, TxData } from "./types";
 
 export function onInit(context: ContextWithTransaction<State>): State {
     const initParams = JSON.parse<InitParams>(context.transaction.data.content)
@@ -120,4 +123,15 @@ export function confirmTransaction(context: ContextWithTransactionAndParams<Stat
     }
     
     return result
+}
+
+@publicFunction()
+export function getTransactionDetails(context: ContextWithParams<State, u64>): Transaction | null{
+    if(!context.state.transactions.has(context.arguments)) return null
+    return context.state.transactions.get(context.arguments)
+}
+
+@publicFunction()
+export function getState(context: Context<State>): State {
+    return context.state
 }
