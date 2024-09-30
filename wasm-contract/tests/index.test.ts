@@ -117,11 +117,12 @@ describe("confirmTransaction", () => {
         expect(contract.state.transactions["1"].status).toBe("pending")
 
         const confirmTx2 = generateTransaction("voter3", 0)
-        const result = contract.confirmTransaction({ transactionId: 1}, { transaction: confirmTx2 })
+        const result = contract.confirmTransaction({ transactionId: 1}, { transaction: confirmTx2, contract: { address: new Address("1234") } })
         expect(contract.state.transactions["1"].confirmations.length).toBe(2)
         expect(contract.state.transactions["1"].confirmations[1].hex).toBe(confirmTx2.address.hex)
         expect(contract.state.transactions["1"].status).toBe("done")
-
+        expect(new Address(contract.state.transactions["1"].snapshotTransaction.hex)).toStrictEqual(new Address("1234"))
+        expect(contract.state.transactions["1"].txData).toBeNull()
 
         expect(result?.transaction.data.content).toBe("hello")
     })

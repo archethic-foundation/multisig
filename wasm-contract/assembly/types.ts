@@ -31,7 +31,7 @@ export class Transaction {
   from!: Address;
   confirmations: Address[] = [];
   originTx!: Address;
-  detailsTransaction: Address | null = null;
+  snapshotTransaction: Address | null = null;
 
   isThresholdReach(threshold: u32): bool {
     return (this.confirmations.length + 1) as u32 >= threshold;

@@ -110,9 +110,10 @@ export function confirmTransaction(context: ContextWithTransactionAndParams<Stat
         }
         transaction.status = Status.Done
         transaction.confirmations.push(context.transaction.address)
-        // transaction.detailsTransaction = context.address;
+        transaction.snapshotTransaction = context.contract.address;
+        transaction.txData = null;
+        transaction.setup = null;
         newState.transactions.set(context.arguments.transactionId, transaction)
-
         result.setState(newState)
     }
     else {
