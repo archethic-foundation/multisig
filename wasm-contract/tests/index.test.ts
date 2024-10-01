@@ -29,12 +29,13 @@ describe("proposeTransaction", () => {
 
         const incomingTx = generateTransaction("voter1", 0)
         contract.proposeTransaction({
-            txData: { content: "hello" }
+            txData: { content: "hello" },
         }, {
-            transaction: incomingTx
+            transaction: incomingTx,
+            balance: { uco: 10, token: []}
         })
 
-        expect(contract.state.nextId).toEqual(1)
+        expect(contract.state.lastID).toEqual(1)
         expect(Object.keys(contract.state.transactions).length).toEqual(1)
         expect(contract.state.transactions["1"].txData.content).toEqual("hello")
         expect(contract.state.transactions["1"].originTx.hex).toStrictEqual(incomingTx.address.hex)

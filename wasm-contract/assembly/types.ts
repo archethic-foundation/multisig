@@ -1,7 +1,7 @@
 import { Address, getFirstTransactionAddress, JSON, Nullable, TransactionBuilder, BigInt, log } from "@archethicjs/ae-contract-as";
 
 export class State {
-  nextId: u64 = 0;
+  lastID: u64 = 0;
   transactions: Map<u64, Transaction> = new Map<u64, Transaction>();
   voters: Address[] = [];
   confirmationThreshold: u32 = 1;
@@ -11,10 +11,9 @@ export class State {
       this.confirmationThreshold = confirmationThreshold;
   }
 
-  setNewID(): u64 {
-      const newID = this.nextId + 1
-      this.nextId = newID
-      return newID
+  getLastID(): u64 {
+      this.lastID += 1;
+      return this.lastID
   }
 }
 

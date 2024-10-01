@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "aewasm build",
+    "build:release": "aewasm build --mode release",
     "test": "npm run build && vitest run"
   },
   "dependencies": {

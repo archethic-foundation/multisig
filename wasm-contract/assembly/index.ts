@@ -7,8 +7,7 @@ import {
     getFirstTransactionAddress,
     Address,
     ContextWithParams,
-    log,
-    Context
+    Context,
 } from "@archethicjs/ae-contract-as/assembly";
 import { InitParams, ProposalParams, ConfirmationParams, State, Status, Transaction, VoterSet, TxData } from "./types";
 
@@ -54,7 +53,7 @@ export function proposeTransaction(context: ContextWithTransactionAndParams<Stat
         }
     }
 
-    const txID = context.state.setNewID() 
+    const txID = context.state.getLastID()
     context.state.transactions.set(txID, {
         setup: context.arguments.setup,
         txData: context.arguments.txData,
