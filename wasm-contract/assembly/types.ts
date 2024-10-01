@@ -1,4 +1,4 @@
-import { Address, getFirstTransactionAddress, JSON, Nullable, TransactionBuilder, BigInt, log } from "@archethicjs/ae-contract-as";
+import { Address, getFirstTransactionAddress, JSON, Nullable, TransactionBuilder, log } from "@archethicjs/ae-contract-as";
 
 export class State {
   lastID: u64 = 0;
@@ -61,11 +61,11 @@ export class TxData {
     if (txContent != null) builder.setContent(txContent)
     
     for (let i = 0; i < this.ucoTransfers.length; i++) {
-      builder.addUCOTransfer(this.ucoTransfers[i].to, BigInt.from(this.ucoTransfers[i].amount))
+      builder.addUCOTransfer(this.ucoTransfers[i].to, this.ucoTransfers[i].amount)
     }
 
     for (let i = 0; i < this.tokenTransfers.length; i++) {
-      builder.addTokenTransfer(this.tokenTransfers[i].to, BigInt.from(this.tokenTransfers[i].amount), this.tokenTransfers[i].tokenAddress, this.tokenTransfers[i].tokenId)
+      builder.addTokenTransfer(this.tokenTransfers[i].to, this.tokenTransfers[i].amount, this.tokenTransfers[i].tokenAddress, this.tokenTransfers[i].tokenId)
     }
 
     for (let i = 0; i < this.recipients.length; i++) {

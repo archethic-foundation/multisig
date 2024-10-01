@@ -16,6 +16,7 @@ export function onInit(context: ContextWithTransaction<State>): State {
     return new State(initParams.voters, initParams.confirmationThreshold);
 }
 
+// @ts-ignore
 @action(TriggerType.Transaction)
 export function proposeTransaction(context: ContextWithTransactionAndParams<State, ProposalParams>): ActionResult<State> {
     const voterAddress = context.transaction.genesis
@@ -66,6 +67,7 @@ export function proposeTransaction(context: ContextWithTransactionAndParams<Stat
         .setState(context.state)
 }
 
+// @ts-ignore
 @action(TriggerType.Transaction)
 export function confirmTransaction(context: ContextWithTransactionAndParams<State, ConfirmationParams>): ActionResult<State> {
     const transactionId = context.arguments;
@@ -126,12 +128,14 @@ export function confirmTransaction(context: ContextWithTransactionAndParams<Stat
     return result
 }
 
+// @ts-ignore
 @publicFunction()
 export function getTransactionDetails(context: ContextWithParams<State, u64>): Transaction | null{
     if(!context.state.transactions.has(context.arguments)) return null
     return context.state.transactions.get(context.arguments)
 }
 
+// @ts-ignore
 @publicFunction()
 export function getState(context: Context<State>): State {
     return context.state
