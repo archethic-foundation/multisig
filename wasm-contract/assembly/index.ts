@@ -107,6 +107,7 @@ export function confirmTransaction(context: ContextWithTransactionAndParams<Stat
             for (let i = 0; i < setup.newVoters.length; i++) {
                 voterSet.add(setup.newVoters[i])
             }
+            newState.voters = voterSet.toAddressList()
         }
         transaction.status = Status.Done
         transaction.confirmations.push(context.transaction.address)
