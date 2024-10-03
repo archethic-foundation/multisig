@@ -9,7 +9,10 @@ import {
     ContextWithParams,
     Context,
 } from "@archethicjs/ae-contract-as/assembly";
-import { InitParams, ProposalParams, ConfirmationParams, State, Status, Transaction, VoterSet, TxData } from "./types";
+
+import { InitParams, ProposalParams, ConfirmationParams } from "./params";
+import { State, Transaction } from "./state"
+import { VoterSet } from "./voter_set";
 
 export function onInit(context: ContextWithTransaction<State>): State {
     const initParams = JSON.parse<InitParams>(context.transaction.data.content)
@@ -54,26 +57,20 @@ export function proposeTransaction(context: ContextWithTransactionAndParams<Stat
         }
     }
 
-    const txID = context.state.getLastID()
-    context.state.transactions.set(txID, {
-        setup: context.arguments.setup,
-        txData: context.arguments.txData,
-        originTx: context.transaction.address,
-        from: voterAddress,
-        status: Status.Pending
-    } as Transaction)
+    const state = context.state
+    const txID = state.getLastID()
+    const tx = new Transaction(voterAddress, context.transaction.address, txData, setup)
 
-    return new ActionResult<State>()
-        .setState(context.state)
+    return new ActionResult<State>().setState(state.setTransactionById(txID, tx))
 }
 
 // @ts-ignore
 @action(TriggerType.Transaction)
 export function confirmTransaction(context: ContextWithTransactionAndParams<State, ConfirmationParams>): ActionResult<State> {
-    const transactionId = context.arguments;
-    assert(context.state.transactions.has(context.arguments.transactionId), "transaction id does not exists");
+    const transactionId = context.arguments.transactionId;
+    assert(context.state.transactions.has(transactionId), "transaction id does not exists");
 
-    const transaction = context.state.transactions.get(context.arguments.transactionId)
+    const transaction = context.state.transactions.get(transactionId)
 
     const voterAddress = context.transaction.genesis
     
@@ -87,7 +84,8 @@ export function confirmTransaction(context: ContextWithTransactionAndParams<Stat
 
     let result = new ActionResult<State>()
 
-    if(transaction.isThresholdReach(context.state.confirmationThreshold)) {
+    const txAddress = context.transaction.address
+    if(transaction.isThresholdReached(context.state.confirmationThreshold)) {
         const txData = transaction.txData 
         if (txData != null) {
             result.setTransaction(txData.getTransactionBuilder())
@@ -110,19 +108,14 @@ export function confirmTransaction(context: ContextWithTransactionAndParams<Stat
             }
             newState.voters = voterSet.toAddressList()
         }
-        transaction.status = Status.Done
-        transaction.confirmations.push(context.transaction.address)
-        transaction.snapshotTransaction = context.contract.address;
-        transaction.txData = null;
-        transaction.setup = null;
-        newState.transactions.set(context.arguments.transactionId, transaction)
+        transaction.confirm(voterAddress, txAddress)
+        transaction.seal(context.contract.address)
+        newState.setTransactionById(transactionId, transaction)
         result.setState(newState)
     }
     else {
-        const newState = context.state
-        transaction.confirmations.push(context.transaction.address)
-        newState.transactions.set(context.arguments.transactionId, transaction)
-        result.setState(newState)
+        transaction.confirm(voterAddress, txAddress)
+        result.setState(context.state.setTransactionById(transactionId, transaction))
     }
     
     return result

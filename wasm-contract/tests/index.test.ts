@@ -87,7 +87,7 @@ describe("confirmTransaction", () => {
         const confirmTx = generateTransaction("voter2", 0)
         const result = contract.confirmTransaction({ transactionId: 1}, { transaction: confirmTx })
         expect(contract.state.transactions["1"].confirmations.length).toBe(1)
-        expect(contract.state.transactions["1"].confirmations[0].hex).toBe(confirmTx.address.hex)
+        expect(Address.compare(contract.state.transactions["1"].confirmations[0].confirmationAddress, confirmTx.address)).toBeTruthy()
         expect(contract.state.transactions["1"].status).toBe("pending")
     })
 
@@ -114,15 +114,15 @@ describe("confirmTransaction", () => {
         const confirmTx = generateTransaction("voter2", 0)
         contract.confirmTransaction({ transactionId: 1}, { transaction: confirmTx })
         expect(contract.state.transactions["1"].confirmations.length).toBe(1)
-        expect(contract.state.transactions["1"].confirmations[0].hex).toBe(confirmTx.address.hex)
+        expect(Address.compare(contract.state.transactions["1"].confirmations[0].confirmationAddress, confirmTx.address)).toBeTruthy()
         expect(contract.state.transactions["1"].status).toBe("pending")
 
         const confirmTx2 = generateTransaction("voter3", 0)
         const result = contract.confirmTransaction({ transactionId: 1}, { transaction: confirmTx2, contract: { address: new Address("1234") } })
         expect(contract.state.transactions["1"].confirmations.length).toBe(2)
-        expect(contract.state.transactions["1"].confirmations[1].hex).toBe(confirmTx2.address.hex)
+        expect(Address.compare(contract.state.transactions["1"].confirmations[1].confirmationAddress, confirmTx2.address)).toBeTruthy()
         expect(contract.state.transactions["1"].status).toBe("done")
-        expect(new Address(contract.state.transactions["1"].snapshotTransaction.hex)).toStrictEqual(new Address("1234"))
+        expect(Address.compare(contract.state.transactions["1"].snapshotTransaction, new Address("1234"))).toBeTruthy()
         expect(contract.state.transactions["1"].txData).toBeNull()
 
         expect(result?.transaction.data.content).toBe("hello")

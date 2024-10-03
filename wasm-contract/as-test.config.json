@@ -1,0 +1,21 @@
+{
+  "input": [
+    "./assembly/__tests__/*.spec.ts"
+  ],
+  "outDir": "./dist/as-test",
+  "logs": "none",
+  "config": "./asconfig.json",
+  "plugins": {
+    "coverage": true
+  },
+  "buildOptions": {
+    "args": [],
+    "target": "wasi"
+  },
+  "runOptions": {
+    "runtime": {
+      "name": "wasmtime",
+      "run": "wasmtime <file>"
+    }
+  }
+}

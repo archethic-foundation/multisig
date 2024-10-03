@@ -1,4 +1,4 @@
-import { Address, getFirstTransactionAddress, JSON, Nullable, TransactionBuilder, log } from "@archethicjs/ae-contract-as";
+import { Address, Nullable, TransactionBuilder } from "@archethicjs/ae-contract-as";
 
 export class State {
   lastID: u64 = 0;
@@ -15,7 +15,64 @@ export class State {
       this.lastID += 1;
       return this.lastID
   }
+
+  setTransactionById(transactionId: u64, tx: Transaction): State {
+    this.transactions.set(transactionId, tx)
+    return this
+  }
 }
+
+@json
+export class TransactionConfirmation {
+  from!: Address;
+  confirmationAddress!: Address;
+}
+
+@json
+export class Transaction {
+  status: Status = Status.Pending;
+  setup: NewSetup | null = null;
+  txData: TxData | null = null;
+  from: Address;
+  confirmations: TransactionConfirmation[] = [];
+  originTx: Address;
+  snapshotTransaction: Address | null = null;
+
+  constructor(from: Address, originTx: Address, txData: TxData | null = null, setup: NewSetup | null = null) {
+    this.status = Status.Pending;
+    this.txData = txData;
+    this.setup = setup;
+    this.originTx = originTx;
+    this.from = from;
+  }
+
+  isThresholdReached(threshold: u32): bool {
+    return (this.confirmations.length + 1) as u32 >= threshold;
+  }
+
+  confirm(voterAddress: Address, transactionAddress: Address): void {
+    this.confirmations.push({ from: voterAddress, confirmationAddress: transactionAddress});
+  }
+
+  alreadyVoted(address: Address): bool {
+    let voted = false;
+    for (let i = 0; i < this.confirmations.length; i++) {
+      if(Address.compare(this.confirmations[i].from, address)) {
+        voted = true;
+        break;
+      }
+    }
+    return voted;
+  }
+
+  seal(contractAddress: Address): void {
+    this.snapshotTransaction = contractAddress;
+    this.txData = null;
+    this.setup = null;
+    this.status = Status.Done
+  }
+}
+
 
 export namespace Status {
   export const Pending = "pending";
@@ -23,31 +80,7 @@ export namespace Status {
 }
 export type Status = string;
 
-export class Transaction {
-  status: Status = Status.Pending;
-  setup: NewSetup | null = null;
-  txData: TxData | null = null;
-  from!: Address;
-  confirmations: Address[] = [];
-  originTx!: Address;
-  snapshotTransaction: Address | null = null;
-
-  isThresholdReach(threshold: u32): bool {
-    return (this.confirmations.length + 1) as u32 >= threshold;
-  }
-
-  alreadyVoted(address: Address): bool {
-    let voted = false;
-    for (let i = 0; i < this.confirmations.length; i++) {
-      if(Address.compare(this.confirmations[i], address)) {
-        voted = true;
-        break;
-      }
-    }
-    return voted;
-  }
-}
-
+@json
 export class TxData {
   ucoTransfers: UCOTransfer[] = [];
   tokenTransfers: TokenTransfer[] = [];
@@ -71,7 +104,7 @@ export class TxData {
     for (let i = 0; i < this.recipients.length; i++) {
       const action = this.recipients[i].action
       if (action != null) {
-        builder.addRawRecipient(this.recipients[i].address, action, this.recipients[i].args)
+        builder.addRecipient(this.recipients[i].address, action, this.recipients[i].args)
       }
     }
       
@@ -84,6 +117,7 @@ export class NewSetup {
   removedVoters: Address[] = [];
   confirmationThreshold: Nullable<u32> | null = null;
 } 
+
 
 export class UCOTransfer {
   to!: Address;
@@ -100,52 +134,5 @@ export class TokenTransfer {
 export class Recipient {
   address!: Address;
   action: string | null = null;
-  args: JSON.Raw = ""
-}
-
-export class VoterSet {
-  set: Set<string> = new Set<string>()
-  constructor(voters: Address[]) {
-      for(let i = 0; i < voters.length; i++) {
-          // Formalize case
-          this.set.add(new Address(voters[i].hex).hex)
-      }
-  }
-
-  has(address: Address): bool {
-      return this.set.has(address.hex)
-  }
-
-  add(address: Address): void {
-    this.set.add(address.hex)
-  }
-
-  delete(address: Address): void {
-    this.set.delete(address.hex)
-  }
-
-  get size(): u32 { return this.set.size as u32}
-
-  toAddressList(): Address[] {
-    let addresses: Address[] = [];
-    let hexAddresses = this.set.values()
-    for(let i = 0; i < hexAddresses.length; i++) {
-      addresses[i] = new Address(hexAddresses[i])
-    }
-    return addresses;
-  }
-}
-
-export class InitParams {
-  voters!: Address[];
-  confirmationThreshold: u32 = 1;
-}
-
-export class ProposalParams {
-  txData: TxData | null = null;
-  setup: NewSetup | null = null;
-}
-
-export class ConfirmationParams {
-  transactionId! :u64;
+  args: string = ""
 }
