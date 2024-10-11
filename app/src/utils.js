@@ -62,3 +62,10 @@ export function extractActionsFromContract(code) {
 
   return actions;
 }
+
+export function explorerLink(connectionStore, address, chain = false) {
+  if (chain) {
+    return `${connectionStore.endpoint}/explorer/chain?address=${address}`
+  }
+  return `${connectionStore.endpoint}/explorer/transaction/${address}`
+}

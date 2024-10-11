@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref, watchEffect } from "vue";
 import Button from "../Button.vue";
-import { shortenAddress } from "@/utils";
-import { Utils } from "@archethicjs/sdk";
+import { shortenAddress, explorerLink } from "@/utils";
+import Address from "../Address.vue";
 
 const props = defineProps({
     transaction: {
@@ -80,15 +80,6 @@ watchEffect(async () => {
     );
 });
 
-const confirmations = computed(() => {
-    return props.transaction.confirmations.map((confirmationAddress) => {
-        return {
-            address: confirmationAddress,
-            url: `${connectionStore.endpoint}/explorer/transaction/${confirmationAddress}`,
-        };
-    });
-});
-
 const emit = defineEmits(["confirm-transaction"]);
 
 function confirmTransaction() {
@@ -144,7 +135,7 @@ function confirmTransaction() {
                             <span class="font-bold">UCO</span> to</span
                         >
                         <span class="ml-1"
-                            >{{ shortenAddress(transfer.to) }}
+                            ><Address :address="transfer.to" chain />
                         </span>
                     </p>
                 </div>
@@ -157,11 +148,13 @@ function confirmTransaction() {
                                 <span class="font-bold">{{
                                     transfer.tokenName
                                 }}</span>
-                                ({{ shortenAddress(transfer.tokenAddress) }})
+                                (<Address :address="transfer.tokenAddress" />)
                                 to</span
                             >
+                            
                             <span class="ml-1"
-                                >{{ shortenAddress(transfer.to) }}
+                                >
+                                <Address :address="transfer.to" chain/>
                             </span>
                         </p>
                     </div>
@@ -172,7 +165,7 @@ function confirmTransaction() {
                         <p class="text-xs content-center text-slate-500">
                             Execute
                             <span class="font-bold">{{ call.action }}</span>
-                            on {{ shortenAddress(call.address) }} with
+                            on <Address :address="call.address" /> with
                             arguments:
                             <code>{{ call.args }}</code>
                         </p>
@@ -196,7 +189,7 @@ function confirmTransaction() {
                         <p class="mb-2 text-xs content-center text-slate-500">
                             <span
                                 >Authorize voter
-                                {{ shortenAddress(voter.address) }}
+                                <Address :address="voter.address" chain/>
                             </span>
                         </p>
                     </div>
@@ -206,7 +199,7 @@ function confirmTransaction() {
                     <p class="mb-2 text-xs content-center text-slate-500">
                         <span
                             >Remove voter
-                            {{ shortenAddress(voter.address) }}
+                            <Address :address="voter.address" chain/>
                         </span>
                     </p>
                 </div>
@@ -219,16 +212,13 @@ function confirmTransaction() {
                 </div>
             </div>
 
-            <div class="mt-2 flex-col gap mt-5" v-if="confirmations.length > 0">
+            <div class="mt-2 flex-col gap mt-5" v-if="props.transaction.confirmations.length > 0">
                 <p class="text-xs mb-2">Confirmations</p>
                 <p
                     class="text-xs text-slate-500"
-                    v-for="confirmation in confirmations"
+                    v-for="confirmation in props.transaction.confirmations"
                 >
-                    Transaction:
-                    <a :href="confirmation.url" target="_blank">{{
-                        shortenAddress(confirmation.address)
-                    }}</a>
+                    <Address :address="confirmation" />
                 </p>
             </div>
         </div>

@@ -2,6 +2,8 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 import { shortenAddress } from "@/utils";
+import Address from "../Address.vue";
+
 
 const props = defineProps({
     vault: {
@@ -12,7 +14,7 @@ const props = defineProps({
 
 const vaultTile = computed(() => {
     return props.vault.name
-        ? `${props.vault.name} (${shortenAddress(props.vault.address)})`
+        ? `${props.vault.name}(${shortenAddress(props.vault.address)})`
         : shortenAddress(props.vault.address);
 });
 </script>

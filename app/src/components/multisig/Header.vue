@@ -2,7 +2,7 @@
 import Assets from "@/components/multisig/Assets.vue";
 import Loading from "@/components/Loading.vue";
 import Button from "@/components/Button.vue";
-import { shortenAddress } from "@/utils";
+import Address from "../Address.vue";
 import { useVaultStore } from "@/stores/vaults";
 import { computed, ref, onMounted } from "vue";
 
@@ -58,27 +58,30 @@ function bookmarkVault() {
 </script>
 
 <template>
-    <div class="flex justify-between">
-        <h2 class="text-xl text-slate-600">{{ props.address }}</h2>
-        <input
-            class="text-slate-500 bg-transparent border[#ddd] outline-none text-md ml-5 border-b"
+    <div class="flex flex-col">
+        <div class="flex flex-row justify-between">
+            <h2 class="text-xl text-slate-600">Multsig: <Address :address="props.address" chain/></h2>
+            <div class="flex-1"></div>
+            <div class="flex gap-2">
+                <a
+                    :href="`${props.endpoint}/explorer/chain?address=${props.address}`"
+                    class="content-center"
+                    target="_blank"
+                    ><Button>Explore on-chain</Button></a
+                >
+                <Button v-show="!alreadyBookmarked" @click="bookmarkVault"
+                    >Bookmark it</Button
+                >
+            </div>
+        </div>
+        <div>
+            <input
+            class="text-slate-500 bg-transparent border[#ddd] outline-none text-sm mt-2 border-b w-1/4"
             v-model="vaultName"
             :placeholder="vaultTitle"
             @keyup.enter="setVaultName"
             @change="setVaultName"
         />
-
-        <div class="flex-1"></div>
-        <div class="flex gap-2">
-            <a
-                :href="`${props.endpoint}/explorer/chain?address=${props.address}`"
-                class="content-center"
-                target="_blank"
-                ><Button>Explore on-chain</Button></a
-            >
-            <Button v-show="!alreadyBookmarked" @click="bookmarkVault"
-                >Bookmark it</Button
-            >
         </div>
     </div>
 

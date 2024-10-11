@@ -1,6 +1,6 @@
 <script setup>
 import Button from "../Button.vue";
-import { shortenAddress } from "@/utils";
+import Address from "../Address.vue";
 
 const props = defineProps({
     voter: {
@@ -15,7 +15,7 @@ defineEmits(["remove-voter"]);
 <template>
     <div class="flex text-slate-700">
         <p class="text-sm content-center truncate w-1/3">
-            {{ shortenAddress(voter.address) }}
+            <Address :address="voter.address" chain />
             <span v-show="voter.name">({{ voter.name }})</span>
         </p>
         <Button
