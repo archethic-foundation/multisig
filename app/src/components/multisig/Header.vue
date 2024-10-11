@@ -29,6 +29,7 @@ const vault = ref(undefined);
 const vaults = ref([]);
 const vaultName = ref("");
 const vaultStore = useVaultStore();
+const disableBookmark = ref(false)
 
 const alreadyBookmarked = computed(() => vault.value !== undefined);
 const vaultTitle = computed(() => {
@@ -48,13 +49,18 @@ onMounted(() => {
         return v.address.toUpperCase() == props.address.toUpperCase();
     });
     vaultName.value = vault.value ? vault.value.name : "";
-    
 });
 
 function bookmarkVault() {
+    disableBookmark.value = true
     vaultStore.addVault(props.address);
     vaults.value = vaultStore.getVaults();
+    vault.value = vaults.value.find((v) => {
+        return v.address.toUpperCase() == props.address.toUpperCase();
+    });
+    disableBookmark.value = false
 }
+
 </script>
 
 <template>
@@ -69,7 +75,7 @@ function bookmarkVault() {
                     target="_blank"
                     ><Button>Explore on-chain</Button></a
                 >
-                <Button v-show="!alreadyBookmarked" @click="bookmarkVault"
+                <Button v-show="!alreadyBookmarked" @click="bookmarkVault" :disabled="disableBookmark"
                     >Bookmark it</Button
                 >
             </div>
