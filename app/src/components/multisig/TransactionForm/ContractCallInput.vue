@@ -1,12 +1,9 @@
 <script setup>
 import { ref, computed, watch } from "vue";
-import {
-    isValidAddress,
-    shortenAddress,
-    extractActionsFromContract,
-} from "@/utils";
+import { isValidAddress } from "@/utils";
 import Warning from "@/components/Warning.vue";
 import Button from "@/components/Button.vue";
+import { Contract } from "@archethicjs/sdk"
 
 import { useConnectionStore } from "@/stores/connection";
 
@@ -44,7 +41,7 @@ function submit() {
     emit("submit", {
         address: contractRecipient.value,
         action: contractAction.value,
-        args: contractArgs.value,
+        args: contractArgs.value.map(x => Contract.parseTypedArgument(x)),
     });
 
     contractRecipient.value = "";
@@ -72,7 +69,7 @@ async function fetchContractActions() {
     }
 
     const code = res.lastTransaction.data.code;
-    availableActions.value = extractActionsFromContract(code);
+    availableActions.value = Contract.extractActionsFromContract(code);
 }
 </script>
 <template>
