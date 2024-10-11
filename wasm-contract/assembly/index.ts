@@ -10,7 +10,7 @@ import {
     Context,
 } from "@archethicjs/ae-contract-as/assembly";
 
-import { InitParams, ProposalParams, ConfirmationParams } from "./params";
+import { InitParams, ProposalParams, ConfirmationParams, DetailsParams } from "./params";
 import { State, Transaction } from "./state"
 import { VoterSet } from "./voter_set";
 
@@ -123,9 +123,9 @@ export function confirmTransaction(context: ContextWithTransactionAndParams<Stat
 
 // @ts-ignore
 @publicFunction()
-export function getTransactionDetails(context: ContextWithParams<State, u64>): Transaction | null{
-    if(!context.state.transactions.has(context.arguments)) return null
-    return context.state.transactions.get(context.arguments)
+export function getTransactionDetails(context: ContextWithParams<State, DetailsParams>): Transaction | null{
+    if(!context.state.transactions.has(context.arguments.transactionId)) return null
+    return context.state.transactions.get(context.arguments.transactionId)
 }
 
 // @ts-ignore

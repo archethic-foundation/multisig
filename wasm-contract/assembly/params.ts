@@ -17,3 +17,7 @@ export class ProposalParams {
 export class ConfirmationParams {
   transactionId! :u64;
 }
+
+export class DetailsParams {
+  transactionId!: u64;
+}
