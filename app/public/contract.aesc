@@ -10,6 +10,7 @@
 #  - token transfers
 #  - recipients (contract calls)
 #  - code (updgrade multisig code)
+#  - content
 #
 # Mulitisig setup includes:
 # - New voters
@@ -88,17 +89,29 @@ actions triggered_by: transaction, on: confirm_transaction(transaction_id) do
     token_transfers = Map.get(tx_data, "token_transfers", [])
     code = Map.get(tx_data, "code", "")
     recipients = Map.get(tx_data, "recipients", [])
+    content = Map.get(tx_data, "content", "")
 
+    typed = false
     if List.size(uco_transfers) > 0 || List.size(token_transfers) > 0 || List.size(recipients) > 0 do
-      Contract.set_type "transfer"
+      Contract.set_type("transfer")
       Contract.add_uco_transfers(uco_transfers)
       Contract.add_token_transfers(token_transfers)
       Contract.add_recipients(recipients)
+      typed = true
     end
 
     if code != "" do
-      Contract.set_type "contract"
+      if !typed do
+        Contract.set_type "contract"
+      end
       Contract.set_code(code)
+    end
+
+    if content != "" do
+      if !typed do
+        Contract.set_type("data")
+      end
+      Contract.set_content(content)
     end
 
     if setup != nil do

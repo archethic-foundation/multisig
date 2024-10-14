@@ -26,6 +26,9 @@ const props = defineProps({
         <Button class="!bg-slate-400 h-9" @click="$emit('pickForm', 'contract')"
             >Add smart contract call</Button
         >
+        <Button class="!bg-slate-400 h-9" @click="$emit('pickForm', 'content')"
+            >Set content</Button
+        >
         <Button class="!bg-slate-400 h-9" @click="$emit('pickForm', 'code')"
             >Update vault's code</Button
         >

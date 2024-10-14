@@ -29,28 +29,31 @@ const props = defineProps({
 
 import { ref, computed } from "vue";
 import Button from "../Button.vue";
-import { shortenAddress } from "@/utils";
 
 const transaction = ref({
     ucoTransfers: [],
     tokenTransfers: [],
     contractCalls: [],
     code: "",
+    content: ""
 });
 
 const showUcoTransferForm = ref(false);
 const showTokenTransferForm = ref(false);
 const showContractCallForm = ref(false);
 const showContractCodeForm = ref(false);
+const showContentForm = ref(false)
 
 const codeSrc = ref("");
+const contentSrc = ref("")
 
 const canProposeTransaction = computed(() => {
     return (
         transaction.value.ucoTransfers.length > 0 ||
         transaction.value.tokenTransfers.length > 0 ||
         transaction.value.contractCalls.length > 0 ||
-        transaction.value.code != ""
+        transaction.value.code != "" ||
+        transaction.value.content != ""
     );
 });
 
@@ -59,6 +62,7 @@ const formsChoices = {
     token: showTokenTransferForm,
     contract: showContractCallForm,
     code: showContractCodeForm,
+    content: showContentForm
 };
 
 function pickForm(form) {
@@ -66,6 +70,7 @@ function pickForm(form) {
     showTokenTransferForm.value = false;
     showContractCallForm.value = false;
     showContractCodeForm.value = false;
+    showContentForm.value = false
 
     formsChoices[form].value = true;
 }
@@ -102,10 +107,24 @@ function setContractCode() {
     showContractCodeForm.value = false;
 }
 
+function setContent() {
+    transaction.value.content = contentSrc.value;
+    contentSrc.value = ""
+    showContentForm.value = false
+}
+
 function uploadContractCode(fileList) {
     var reader = new FileReader();
     reader.onload = function (event) {
         codeSrc.value = reader.result;
+    };
+    reader.readAsText(fileList[0]);
+}
+
+function uploadContent(fileList) {
+    var reader = new FileReader();
+    reader.onload = function (event) {
+        contentSrc.value = reader.result;
     };
     reader.readAsText(fileList[0]);
 }
@@ -142,12 +161,17 @@ function removeCode() {
     transaction.value.code = "";
 }
 
+function removeContent() {
+    transaction.value.content = "";
+}
+
 function reset() {
     transaction.value = {
         ucoTransfers: [],
         tokenTransfers: [],
         contractCalls: [],
         code: "",
+        content: ""
     };
 }
 
@@ -177,6 +201,25 @@ watch(
                 :tokens="props.tokens"
                 @submit="addTokenTransfer"
             />
+        </div>
+
+        <div class="mt-5 flex flex-col gap-5" v-show="showContentForm">
+            <p class="text-xs text-slate-500">Define content</p>
+            <div>
+                <label for="contentSrc" class="text-sm">Content source file</label>
+                <input
+                    class="outline-none text-sm w-full bg-transparent p-1 border-b"
+                    v-on:change="uploadContent($event.target.files)"
+                    type="file"
+                    id="contentSrc"
+                />
+            </div>
+
+            <div>
+                <Button class="text-xs h-8" @click="setContent"
+                    >Submit</Button
+                >
+            </div>
         </div>
 
         <div class="mt-5 flex flex-col gap-5" v-show="showContractCallForm">
@@ -264,6 +307,18 @@ watch(
                         {{ transaction.code }}
                     </p>
                     <Button class="ml-5 text-xs h-8" @click="removeCode()"
+                        >Remove</Button
+                    >
+                </div>
+            </div>
+
+            <div v-show="transaction.content.length > 0" class="pt-5 mt-2">
+                <p class="text-xs text-slate-500 mb-2">Content</p>
+                <div class="flex mb-2">
+                    <p class="text-xs truncate content-center w-1/4">
+                        {{ transaction.content }}
+                    </p>
+                    <Button class="ml-5 text-xs h-8" @click="removeContent()"
                         >Remove</Button
                     >
                 </div>

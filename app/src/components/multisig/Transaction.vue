@@ -85,6 +85,7 @@ const emit = defineEmits(["confirm-transaction"]);
 function confirmTransaction() {
     emit("confirm-transaction", props.transaction.id);
 }
+
 </script>
 
 <template>
@@ -176,6 +177,13 @@ function confirmTransaction() {
                     <p class="text-xs text-slate-500 mb-2">Contract code</p>
                     <pre class="text-xs truncate">{{
                         shortenAddress(transaction.code)
+                    }}</pre>
+                </div>
+
+                <div v-show="transaction.content != ''">
+                    <p class="text-xs text-slate-500 mb-2">Content</p>
+                    <pre class="text-xs truncate">{{
+                        transaction.content
                     }}</pre>
                 </div>
 

@@ -219,6 +219,7 @@ function explode_tx(tx_data, setup) {
         ucoTransfers: tx_data ? tx_data.uco_transfers : [],
         tokenTransfers: tx_data ? tx_data.token_transfers : [],
         code: tx_data ? tx_data.code : "",
+        content: tx_data ? tx_data.content: "",
         recipients: tx_data ? tx_data.recipients : [],
         newVoters:
             setup && setup.new_voters
@@ -243,8 +244,9 @@ async function proposeNewTransaction(proposeTransaction, proposeSetup) {
               token_transfers: proposeTransaction.tokenTransfers,
               recipients: proposeTransaction.contractCalls,
               code: proposeTransaction.code,
+              content: proposeTransaction.content
           }
-        : { uco_transfers: [], token_transfers: [], recipients: [], code: "" };
+        : { uco_transfers: [], token_transfers: [], recipients: [], code: "", content: "" };
 
     const newSetup = proposeSetup
         ? {
