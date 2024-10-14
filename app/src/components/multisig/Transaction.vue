@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watchEffect } from "vue";
 import Button from "../Button.vue";
-import { shortenAddress, explorerLink } from "@/utils";
+import { shortenAddress } from "@/utils";
 import Address from "../Address.vue";
 
 const props = defineProps({
@@ -32,7 +32,13 @@ const nbApprovals = computed(() => {
 const showDetails = ref(false);
 const resolvedTokens = ref([]);
 
-const toBeConfirmed = ref(false);
+const currentAddress = connectionStore.accountAddress.toUpperCase();
+const toBeConfirmed = computed(() => {
+    const eligibleToVote = props.nbVoters > 1 ? props.transaction.from != currentAddress : true;
+    return props.transaction.status == "pending" && eligibleToVote
+})
+
+const alreadyVoted = ref(false)
 
 watchEffect(async () => {
     const archethic = connectionStore.connection;
@@ -45,18 +51,7 @@ watchEffect(async () => {
         }),
     );
 
-    const currentAddress = connectionStore.accountAddress.toUpperCase();
-
-    const eligibleToVote =
-        props.nbVoters > 1 ? props.transaction.from != currentAddress : true;
-    const alreadyVoted = confirmationsGenesisAddresses.includes(currentAddress);
-
-    const confirmation =
-        props.transaction.status == "pending" &&
-        eligibleToVote &&
-        !alreadyVoted;
-
-    toBeConfirmed.value = confirmation;
+    alreadyVoted.value = confirmationsGenesisAddresses.includes(currentAddress);
 
     resolvedTokens.value = await Promise.all(
         props.transaction.tokenTransfers.map(
@@ -112,7 +107,6 @@ function confirmTransaction() {
                     v-show="showDetails"
                     >Hide details</Button
                 >
-
                 <Button
                     class="w-24 text-xs h-8"
                     v-show="toBeConfirmed"
@@ -120,9 +114,8 @@ function confirmTransaction() {
                     :disabled="props.pendingConfirmation"
                 >
                     <span v-show="!props.pendingConfirmation">Confirm</span>
-                    <span v-show="props.pendingConfirmation"
-                        >Confirming...</span
-                    ></Button
+                    <span v-show="props.pendingConfirmation">Confirming...</span>
+                </Button
                 >
             </div>
         </div>

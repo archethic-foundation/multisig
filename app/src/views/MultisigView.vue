@@ -32,7 +32,7 @@ const loadingTransactions = ref(true);
 const loadingSetup = ref(true);
 
 const pendingNewTransaction = ref(false);
-const pendingConfirmation = ref(false);
+const pendingConfirmation = ref(null);
 const pendingNewSetup = ref(false);
 
 const canEdit = computed(() => {
@@ -307,7 +307,7 @@ async function handleProposeTransaction(proposeTransaction, proposeSetup) {
 }
 
 async function handleTransactionConfirmation(transactionId) {
-    pendingConfirmation.value = true;
+    pendingConfirmation.value = transactionId;
     confirmationError.value = "";
     const chainSize =
         await archethic.transaction.getTransactionIndex(contractAddress);
@@ -326,7 +326,7 @@ async function handleTransactionConfirmation(transactionId) {
     } catch (e) {
         confirmationError.value = e;
     } finally {
-        pendingConfirmation.value = false;
+        pendingConfirmation.value = null;
     }
 }
 
@@ -411,11 +411,9 @@ function handleNewConfirmationThreshold(newRequiredConfirmations) {
                 <Transaction
                     v-for="transaction in transactions"
                     :transaction="transaction"
-                    :requiredConfirmations="
-                        transaction.setup.confirmationThreshold
-                    "
+                    :requiredConfirmations="transaction.setup.confirmationThreshold"
                     :nbVoters="voters.length"
-                    :pendingConfirmation="pendingConfirmation"
+                    :pendingConfirmation="pendingConfirmation == transaction.id"
                     @confirm-transaction="handleTransactionConfirmation"
                 />
 
