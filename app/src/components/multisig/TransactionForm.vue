@@ -1,5 +1,5 @@
-<script setup>
-import { watch } from "vue";
+<script setup lang="ts">
+import { watch, type Ref, ref, computed  } from "vue";
 import Header from "@/components/multisig/TransactionForm/Header.vue";
 
 import UCOTransferInput from "@/components/multisig/TransactionForm/UCOTransferInput.vue";
@@ -10,30 +10,33 @@ import UCOTransferItem from "@/components/multisig/TransactionForm/UCOTransferIt
 import TokenTransferItem from "@/components/multisig/TransactionForm/TokenTransferItem.vue";
 import ContractCallItem from "@/components/multisig/TransactionForm/ContractCallItem.vue";
 
-const emit = defineEmits(["proposeTransaction"]);
-
-const props = defineProps({
-  pending: {
-    type: Boolean,
-    default: false,
-  },
-  tokens: {
-    type: Array,
-    default: [],
-  },
-  toReset: {
-    type: Boolean,
-    default: false,
-  },
-});
-
-import { ref, computed } from "vue";
 import Button from "../Button.vue";
+import type { Recipient, TokenTransfer, TxData, UCOTransfer } from "@/types";
+import type { Token } from "@archethicjs/sdk/dist/types";
 
-const transaction = ref({
+const emit = defineEmits<{
+  proposeTransaction: [transaction: TxData]
+}>()
+
+
+type token = Token & {
+  address: string;
+  amount: number;
+  tokenId: number;
+};
+
+interface Props {
+  pending: boolean;
+  tokens: token[];
+  toReset: boolean;
+}
+
+const props = defineProps<Props>();
+
+const transaction: Ref<TxData> = ref({
   ucoTransfers: [],
   tokenTransfers: [],
-  contractCalls: [],
+  recipients: [],
   code: "",
   content: "",
 });
@@ -51,7 +54,7 @@ const canProposeTransaction = computed(() => {
   return (
     transaction.value.ucoTransfers.length > 0 ||
     transaction.value.tokenTransfers.length > 0 ||
-    transaction.value.contractCalls.length > 0 ||
+    transaction.value.recipients.length > 0 ||
     transaction.value.code != "" ||
     transaction.value.content != ""
   );
@@ -65,7 +68,7 @@ const formsChoices = {
   content: showContentForm,
 };
 
-function pickForm(form) {
+function pickForm(form: "uco" | "token" | "contract" | "code" | "content") {
   showUcoTransferForm.value = false;
   showTokenTransferForm.value = false;
   showContractCallForm.value = false;
@@ -75,28 +78,28 @@ function pickForm(form) {
   formsChoices[form].value = true;
 }
 
-function addUcoTransfer({ to, amount }) {
+function addUcoTransfer(transfer: UCOTransfer) {
   transaction.value.ucoTransfers.push({
-    to: to,
-    amount: amount,
+    to: transfer.to,
+    amount: transfer.amount,
   });
   showUcoTransferForm.value = false;
 }
 
-function addTokenTransfer({ to, amount, tokenAddress }) {
+function addTokenTransfer(transfer: TokenTransfer) {
   transaction.value.tokenTransfers.push({
-    to: to,
-    tokenAddress: tokenAddress,
-    amount: amount,
+    to: transfer.to,
+    tokenAddress: transfer.tokenAddress,
+    amount: transfer.amount,
   });
   showTokenTransferForm.value = false;
 }
 
-function addContractCall({ address, action, args }) {
-  transaction.value.contractCalls.push({
-    address: address,
-    action: action,
-    args: args,
+function addContractCall(contractCall: Recipient) {
+  transaction.value.recipients.push({
+    address: contractCall.address,
+    action: contractCall.action,
+    args: contractCall.args,
   });
   showContractCallForm.value = false;
 }
@@ -113,23 +116,25 @@ function setContent() {
   showContentForm.value = false;
 }
 
-function uploadContractCode(fileList) {
+function uploadContractCode(fileList: FileList | null) {
+  if (!fileList) return
   var reader = new FileReader();
-  reader.onload = function (event) {
-    codeSrc.value = reader.result;
+  reader.onload = function (_event) {
+    codeSrc.value = reader.result as string;
   };
   reader.readAsText(fileList[0]);
 }
 
-function uploadContent(fileList) {
+function uploadContent(fileList: FileList | null) {
+  if (!fileList) return
   var reader = new FileReader();
-  reader.onload = function (event) {
-    contentSrc.value = reader.result;
+  reader.onload = function (_event) {
+    contentSrc.value = reader.result as string;
   };
   reader.readAsText(fileList[0]);
 }
 
-function removeUCOTransfer(transfer) {
+function removeUCOTransfer(transfer: UCOTransfer) {
   transaction.value.ucoTransfers = transaction.value.ucoTransfers.filter(
     (t) => {
       return !(t.to == transfer.to && t.amount == transfer.amount);
@@ -137,7 +142,7 @@ function removeUCOTransfer(transfer) {
   );
 }
 
-function removeTokenTransfer(transfer) {
+function removeTokenTransfer(transfer: TokenTransfer) {
   transaction.value.tokenTransfers = transaction.value.tokenTransfers.filter(
     (t) => {
       return !(
@@ -149,8 +154,8 @@ function removeTokenTransfer(transfer) {
   );
 }
 
-function removeContractCall(call) {
-  transaction.value.contractCalls = transaction.value.contractCalls.filter(
+function removeContractCall(call: Recipient) {
+  transaction.value.recipients = transaction.value.recipients.filter(
     (c) => {
       return !(c.address == call.address && c.action == call.action);
     },
@@ -169,7 +174,7 @@ function reset() {
   transaction.value = {
     ucoTransfers: [],
     tokenTransfers: [],
-    contractCalls: [],
+    recipients: [],
     code: "",
     content: "",
   };
@@ -188,8 +193,8 @@ watch(
     <Header
       :edited="canProposeTransaction"
       :pending="props.pending"
-      @pick-form="pickForm"
-      @propose-transaction="$emit('proposeTransaction', transaction)"
+      @pickForm="pickForm"
+      @proposeTransaction="$emit('proposeTransaction', transaction)"
       @reset="reset"
     />
     <div class="mt-5 flex flex-col gap-5" v-show="showUcoTransferForm">
@@ -206,7 +211,7 @@ watch(
         <label for="contentSrc" class="text-sm">Content source file</label>
         <input
           class="outline-none text-sm w-full bg-transparent p-1 border-b"
-          v-on:change="uploadContent($event.target.files)"
+          v-on:change="uploadContent(($event.target as HTMLInputElement).files)"
           type="file"
           id="contentSrc"
         />
@@ -227,7 +232,7 @@ watch(
         <label for="codeSrc" class="text-sm">Code source file</label>
         <input
           class="outline-none text-sm w-full bg-transparent p-1 border-b"
-          v-on:change="uploadContractCode($event.target.files)"
+          v-on:change="uploadContractCode(($event.target as HTMLInputElement).files)"
           type="file"
           id="codeSrc"
         />
@@ -271,10 +276,10 @@ watch(
         </div>
       </div>
 
-      <div v-show="transaction.contractCalls.length > 0" class="pt-5 mt-2">
+      <div v-show="transaction.recipients.length > 0" class="pt-5 mt-2">
         <p class="text-xs text-slate-500 mb-2">Contract calls</p>
         <div class="gap-5">
-          <div v-for="call in transaction.contractCalls">
+          <div v-for="call in transaction.recipients">
             <div class="flex mb-2">
               <ContractCallItem :call="call" />
               <Button class="ml-5 text-xs h-8" @click="removeContractCall(call)"

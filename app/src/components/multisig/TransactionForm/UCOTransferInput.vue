@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
 import { isValidAddress } from "@/utils";
 import Warning from "@/components/Warning.vue";
@@ -18,7 +18,7 @@ function submit() {
   }
 
   const amount = Number(ucoAmount.value);
-  if (amount == NaN || amount <= 0) {
+  if (amount <= 0) {
     errMsg.value = "Invalid amount";
     return;
   }
@@ -29,7 +29,7 @@ function submit() {
   });
 
   ucoRecipient.value = "";
-  ucoAmount.value = "";
+  ucoAmount.value = 0;
 }
 </script>
 <template>

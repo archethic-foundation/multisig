@@ -1,16 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
 import { isValidAddress, shortenAddress } from "@/utils";
 import Warning from "@/components/Warning.vue";
 import Button from "@/components/Button.vue";
 
 const emit = defineEmits(["submit"]);
-const props = defineProps({
-  tokens: {
-    type: Array,
-    default: [],
-  },
-});
+
+interface Token {
+  name: string;
+  address: string;
+}
+
+interface Props {
+  tokens: Token[]
+}
+
+const { tokens } = defineProps<Props>()
 
 const tokenRecipient = ref("");
 const tokenAmount = ref(0);
@@ -30,7 +35,7 @@ function submit() {
   }
 
   const amount = Number(tokenAmount.value);
-  if (amount == NaN || amount <= 0) {
+  if (amount <= 0) {
     errMsg.value = "Invalid amount";
     return;
   }
@@ -42,7 +47,7 @@ function submit() {
   });
 
   tokenRecipient.value = "";
-  tokenAmount.value = "";
+  tokenAmount.value = 0;
   tokenAddress.value = "";
 }
 </script>

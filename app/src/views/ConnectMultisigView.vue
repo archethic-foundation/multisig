@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import ConnectMultisig from "../components/ConnectMultisig.vue";
 import Summary from "@/components/multisig/Summary.vue";
 
@@ -12,7 +12,7 @@ const router = useRouter();
 const vaults = computed(() => vaultStore.getVaults());
 const displayVaultListing = computed(() => vaults.value.length > 0);
 
-function goToMultisig(multisig) {
+function goToMultisig(multisig: string) {
   router.push({
     name: "app",
     params: {

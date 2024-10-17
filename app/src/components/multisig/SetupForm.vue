@@ -1,42 +1,36 @@
-<script setup>
-import { ref, computed, watch, toRef } from "vue";
+<script setup lang="ts">
+import { ref, computed } from "vue";
 
 import Button from "../Button.vue";
-import Voter from "./Voter.vue";
+import VoterItem from "./VoterItem.vue";
 import VoterForm from "./VoterForm.vue";
-import ConfirmationSelect from "./Setup/ConfirmationSelect.vue";
+import ConfirmationSelect from "./SetupForm/ConfirmationSelect.vue";
+import type { Voter } from "@/types";
 
-const props = defineProps({
-  voters: {
-    type: Array,
-    default: [],
-  },
-  requiredConfirmations: {
-    type: Number,
-    default: 1,
-  },
-  canEdit: {
-    type: Boolean,
-    default: true,
-  },
-});
+type Props = {
+  voters: Voter[];
+  requiredConfirmations?: number;
+  canEdit?: boolean;
+}
+
+const props = defineProps<Props>()
 
 const emit = defineEmits(["new-confirmation-threshold", "new-voters"]);
 
 const showNewVoterForm = ref(false);
 const nbVoters = computed(() => props.voters.length);
 
-function handleRequiredConfirmationChange(newRequiredConfirmations) {
+function handleRequiredConfirmationChange(newRequiredConfirmations: number) {
   emit("new-confirmation-threshold", newRequiredConfirmations);
 }
 
-function handleNewVoter(voterAddress) {
-  const voters = props.voters;
-  voters.push({ address: voterAddress });
-  emit("new-voters", voters);
+function handleNewVoter(voterAddress: string) {
+  const newVoters = props.voters;
+  newVoters.push({ address: voterAddress });
+  emit("new-voters", props.voters);
 }
 
-function handleRemoveVoter(voterAddress) {
+function handleRemoveVoter(voterAddress: string) {
   const newVoters = props.voters.filter((voter) => {
     return voter.address != voterAddress;
   });
@@ -55,7 +49,7 @@ function handleRemoveVoter(voterAddress) {
     <Button
       class="bg-slate-500"
       @click="showNewVoterForm = true"
-      v-show="props.canEdit && !showNewVoterForm"
+      v-show="canEdit && !showNewVoterForm"
       >Add voter</Button
     >
   </div>
@@ -66,7 +60,7 @@ function handleRemoveVoter(voterAddress) {
     <VoterForm @new-voter="handleNewVoter" />
   </div>
   <div class="flex flex-col gap-3" v-if="nbVoters > 0">
-    <Voter
+    <VoterItem
       :voter="voter"
       @remove-voter="handleRemoveVoter"
       v-for="voter in props.voters"

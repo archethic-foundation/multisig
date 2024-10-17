@@ -1,10 +1,11 @@
 import { Utils, Crypto } from "@archethicjs/sdk";
+import type { ConnectionStore } from "./stores/connection";
 
-export function shortenAddress(address) {
+export function shortenAddress(address: string): string {
   return `${address.slice(0, 8)}...${address.slice(address.length - 8)}`;
 }
 
-export function isValidAddress(address) {
+export function isValidAddress(address: string): boolean {
   if (!Utils.isHex(address)) {
     return false;
   }
@@ -35,15 +36,17 @@ export function isValidAddress(address) {
         return digest.length == 64;
       case "blake2b":
         return digest.length == 64;
+      default:
+        throw new Error("Unsupported algo")
     }
   } catch (e) {
     return false;
   }
 }
 
-export function explorerLink(connectionStore, address, chain = false) {
+export function explorerLink(endpoint: string, address: string, chain = false): string {
   if (chain) {
-    return `${connectionStore.endpoint}/explorer/chain?address=${address}`;
+    return `${endpoint}/explorer/chain?address=${address}`;
   }
-  return `${connectionStore.endpoint}/explorer/transaction/${address}`;
+  return `${endpoint}/explorer/transaction/${address}`;
 }

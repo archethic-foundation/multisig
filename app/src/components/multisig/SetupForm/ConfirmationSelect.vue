@@ -1,24 +1,20 @@
-<script setup>
-import { computed, ref } from "vue";
+<script setup lang="ts">
+import { computed } from "vue";
 
-const props = defineProps({
-  nbVoters: {
-    type: Number,
-    default: 1,
-  },
-  selection: {
-    type: Number,
-    default: 1,
-  },
-});
+interface Props {
+  nbVoters?: number;
+  selection?: number;
+}
+
+const { nbVoters = 1, selection = 1} = defineProps<Props>()
 
 const options = computed(() => {
   let confirmations = [];
-  const listSize = props.nbVoters > 1 ? props.nbVoters - 1 : 1;
+  const listSize = nbVoters > 1 ? nbVoters - 1 : 1;
   for (let i = 0; i < listSize; i++) {
     confirmations.push({
       value: i + 1,
-      selected: props.selection == i + 1,
+      selected: selection == i + 1,
     });
   }
   return confirmations;
@@ -26,8 +22,8 @@ const options = computed(() => {
 
 const emit = defineEmits(["set-required-confirmations"]);
 
-function selectRequiredConfirmation(value) {
-  emit("set-required-confirmations", parseInt(event.target.value));
+function selectRequiredConfirmation(value: string) {
+  emit("set-required-confirmations", parseInt(value));
 }
 </script>
 
@@ -36,7 +32,7 @@ function selectRequiredConfirmation(value) {
   <select
     class="p-2 outline-none"
     id="requiredConfirmations"
-    @change="selectRequiredConfirmation"
+    v-on:change="selectRequiredConfirmation(($event.target as HTMLSelectElement).value)"
   >
     <option
       v-for="option in options"

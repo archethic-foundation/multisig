@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
 import { Utils } from "@archethicjs/sdk";
 import Warning from "@/components/Warning.vue";

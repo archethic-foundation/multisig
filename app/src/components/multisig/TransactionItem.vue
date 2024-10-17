@@ -1,40 +1,37 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watchEffect } from "vue";
 import Button from "../Button.vue";
 import { shortenAddress } from "@/utils";
 import Address from "../Address.vue";
 
-const props = defineProps({
-    transaction: {
-        type: Object,
-        required: true,
-    },
-    requiredConfirmations: {
-        type: Number,
-        required: true,
-    },
-    nbVoters: {
-        type: Number,
-        required: true,
-    },
-    pendingConfirmation: {
-        type: Boolean,
-        default: false,
-    },
-});
+interface Props {
+    transaction: Transaction;
+    requiredConfirmations: number;
+    nbVoters: number;
+    pendingConfirmation: boolean;
+}
+
+const props = defineProps<Props>();
 
 import { useConnectionStore } from "@/stores/connection";
+import type { TokenTransfer, Transaction } from "@/types";
+import type { Token } from "@archethicjs/sdk/dist/types";
 const connectionStore = useConnectionStore();
 
 const nbApprovals = computed(() => {
     return props.transaction.confirmations.length;
 });
 const showDetails = ref(false);
-const resolvedTokens = ref([]);
+
+type ResolvedTokenTransfer = TokenTransfer & {
+    tokenName?: string;
+}
+
+const resolvedTokens = ref([] as ResolvedTokenTransfer[]);
 
 const currentAddress = connectionStore.accountAddress.toUpperCase();
 const toBeConfirmed = computed(() => {
-    const eligibleToVote = props.nbVoters > 1 ? props.transaction.from != currentAddress : true;
+    const eligibleToVote = props.requiredConfirmations > 1 ? props.transaction.from != currentAddress : true;
     return props.transaction.status == "pending" && eligibleToVote
 })
 
@@ -44,7 +41,7 @@ watchEffect(async () => {
     const archethic = connectionStore.connection;
     const confirmationsGenesisAddresses = await Promise.all(
         props.transaction.confirmations.map(async (confirmation) => {
-            const res = await archethic.network.rawGraphQLQuery(
+            const res = await archethic?.network.rawGraphQLQuery(
                 `query{ genesisAddress(address: "${confirmation}") }`,
             );
             return res.genesisAddress;
@@ -53,26 +50,17 @@ watchEffect(async () => {
 
     alreadyVoted.value = confirmationsGenesisAddresses.includes(currentAddress);
 
-    resolvedTokens.value = await Promise.all(
-        props.transaction.tokenTransfers.map(
-            async ({ to, amount, tokenAddress }) => {
-                const res = await archethic.network.rawGraphQLQuery(
-                    `query {
-            token(address: "${tokenAddress}") { name }
-          }`,
-                );
-                if (res.token) {
-                    return {
-                        to,
-                        tokenAddress,
-                        amount,
-                        tokenName: res.token.name,
-                    };
-                }
-                return { to, tokenAddress, amount };
-            },
-        ),
-    );
+    if (props.transaction.txData) {
+        resolvedTokens.value = await Promise.all(props.transaction.txData.tokenTransfers.map(async (token: TokenTransfer) => {
+            const tokenDetails = await archethic?.network.getToken(token.tokenAddress) as Token;
+            return {
+                to: token.to,
+                tokenAddress: token.tokenAddress,
+                amount: token.amount,
+                tokenName: tokenDetails.name,
+            };
+        }))
+    }
 });
 
 const emit = defineEmits(["confirm-transaction"]);
@@ -122,7 +110,7 @@ function confirmTransaction() {
 
         <div v-show="showDetails">
             <div class="mt-2 flex flex-col gap">
-                <div v-for="transfer in transaction.ucoTransfers">
+                <div v-for="transfer in transaction.txData?.ucoTransfers">
                     <p class="mb-2 text-xs content-center text-slate-500">
                         <span
                             >Send {{ transfer.amount }}
@@ -154,7 +142,7 @@ function confirmTransaction() {
                     </div>
                 </div>
 
-                <div v-for="call in transaction.recipients">
+                <div v-for="call in transaction.txData?.recipients">
                     <div class="flex">
                         <p class="text-xs content-center text-slate-500">
                             Execute
@@ -166,49 +154,49 @@ function confirmTransaction() {
                     </div>
                 </div>
 
-                <div v-show="transaction.code != ''">
+                <div v-show="transaction.txData?.code != ''">
                     <p class="text-xs text-slate-500 mb-2">Contract code</p>
                     <pre class="text-xs truncate">{{
-                        shortenAddress(transaction.code)
+                        shortenAddress(transaction.txData?.code as string)
                     }}</pre>
                 </div>
 
-                <div v-show="transaction.content != ''">
+                <div v-show="transaction.txData?.content != ''">
                     <p class="text-xs text-slate-500 mb-2">Content</p>
                     <pre class="text-xs truncate">{{
-                        transaction.content
+                        transaction.txData?.content
                     }}</pre>
                 </div>
 
                 <div
                     v-show="
-                        transaction.newVoters &&
-                        transaction.newVoters.length > 0
+                        transaction.setup?.newVoters &&
+                        transaction.setup?.newVoters.length > 0
                     "
                 >
-                    <div v-for="voter in transaction.newVoters">
+                    <div v-for="voter in transaction.setup?.newVoters">
                         <p class="mb-2 text-xs content-center text-slate-500">
                             <span
                                 >Authorize voter
-                                <Address :address="voter.address" chain/>
+                                <Address :address="voter" chain/>
                             </span>
                         </p>
                     </div>
                 </div>
 
-                <div v-for="voter in transaction.removedVoters">
+                <div v-for="voter in transaction.setup.removedVoters">
                     <p class="mb-2 text-xs content-center text-slate-500">
                         <span
                             >Remove voter
-                            <Address :address="voter.address" chain/>
+                            <Address :address="voter" chain/>
                         </span>
                     </p>
                 </div>
 
-                <div v-show="transaction.newThreshold">
+                <div v-show="transaction.setup.newThreshold">
                     <p class="text-xs text-slate-500 mb-2">
                         New confirmation threshold:
-                        {{ transaction.newThreshold }}
+                        {{ transaction.setup.newThreshold }}
                     </p>
                 </div>
             </div>

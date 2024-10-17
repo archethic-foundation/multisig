@@ -1,18 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import Button from "@/components/Button.vue";
 
-defineEmits(["pick-form", "propose-transaction", "reset"]);
+type formType = "uco" | "token" | "contract" | "code" | "content"
 
-const props = defineProps({
-  pending: {
-    type: Boolean,
-    default: false,
-  },
-  edited: {
-    type: Boolean,
-    default: false,
-  },
-});
+defineEmits<({
+  pickForm: [form: formType],
+  proposeTransaction: []
+  reset: []
+})>()
+
+interface Props {
+  pending: boolean;
+  edited: boolean;
+}
+
+const props = defineProps<Props>();
 </script>
 
 <template>
@@ -35,7 +37,7 @@ const props = defineProps({
     <div class="flex-1"></div>
     <Button
       class="h-9"
-      @click="$emit('propose-transaction', transaction)"
+      @click="$emit('proposeTransaction')"
       v-show="props.edited"
       :disabled="props.pending"
     >

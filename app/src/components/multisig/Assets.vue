@@ -1,25 +1,21 @@
-<script setup>
-import { shortenAddress } from "@/utils";
+<script setup lang="ts">
 import Asset from "@/components/multisig/Asset.vue";
+import type { Balance } from "./types";
 
-const props = defineProps({
-  balance: {
-    type: Object,
-    default: {
-      uco: 0,
-      tokens: [],
-    },
-  },
-});
+interface Props {
+  balance: Balance
+}
+
+const { balance = { uco: 0, tokens: [] }} = defineProps<Props>();
 </script>
 
 <template>
   <div class="grid grid-cols-10 gap-3">
-    <Asset name="UCO" :amount="props.balance.uco" />
+    <Asset name="UCO" :amount="balance.uco" />
     <Asset
       :name="`${token.name} (${token.symbol})`"
       :amount="token.amount"
-      v-for="token in props.balance.tokens"
+      v-for="token in balance.tokens"
     />
   </div>
 </template>

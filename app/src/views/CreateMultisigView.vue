@@ -1,22 +1,29 @@
-<script setup>
+<script setup lang="ts">
 import Button from "@/components/Button.vue";
 import Warning from "@/components/Warning.vue";
 
-import Setup from "@/components/multisig/Setup.vue";
-import { Crypto, Utils } from "@archethicjs/sdk";
+import SetupForm from "@/components/multisig/SetupForm.vue";
+import Archethic, { Crypto, Utils } from "@archethicjs/sdk";
 
-import { ref, onMounted } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { ref, onMounted, type Ref } from "vue";
+import { useRouter } from "vue-router";
 import { useConnectionStore } from "@/stores/connection";
+import type { Setup, Voter } from "@/types";
 import { useVaultStore } from "@/stores/vaults";
 
 const connectionStore = useConnectionStore();
 const vaultStore = useVaultStore();
 const router = useRouter();
-const multisigSetup = ref({
+
+type setup = {
+  voters: Voter[];
+  confirmationThreshold: number;
+}
+
+const multisigSetup: Ref<setup> = ref({
   voters: [],
   confirmationThreshold: 0,
-});
+} as Setup);
 
 const deployErrMsg = ref("");
 const pendingDeployment = ref(false);
@@ -30,11 +37,11 @@ onMounted(async () => {
   };
 });
 
-function handleNewVoters(voters) {
+function handleNewVoters(voters: Voter[]) {
   multisigSetup.value.voters = voters;
 }
 
-function handleNewConfirmationThreshold(confirmationThreshold) {
+function handleNewConfirmationThreshold(confirmationThreshold: number) {
   multisigSetup.value.confirmationThreshold = confirmationThreshold;
 }
 
@@ -42,10 +49,12 @@ async function deployMultisig() {
   deployErrMsg.value = "";
   pendingDeployment.value = true;
   try {
+    const archethic = connectionStore.connection;
+    if (!archethic) {
+      return
+    }
     const seedSC = Crypto.randomSecretKey();
     const multisigGenesis = Crypto.deriveAddress(seedSC);
-
-    const archethic = connectionStore.connection;
     await fundSC(archethic, multisigGenesis);
 
     const multisigTx = await createContractTransaction(
@@ -55,7 +64,7 @@ async function deployMultisig() {
     );
 
     multisigTx
-      .on("requiredConfirmation", (nbConf) => {
+      .on("requiredConfirmation", (nbConf: number) => {
         pendingDeployment.value = false;
         vaultStore.addVault(Utils.uint8ArrayToHex(multisigGenesis));
         router.push({
@@ -65,7 +74,7 @@ async function deployMultisig() {
           },
         });
       })
-      .on("error", (context, reason) => {
+      .on("error", (_context: string, reason: string) => {
         deployErrMsg.value = reason;
       })
       .on("timeout", () => {
@@ -73,26 +82,27 @@ async function deployMultisig() {
       })
       .send();
   } catch (e) {
-    deployErrMsg.value = e;
+    deployErrMsg.value = (e as Error).message;
     pendingDeployment.value = false;
   }
 }
 
-async function fundSC(archethic, multisigGenesis) {
+async function fundSC(archethic: Archethic, multisigGenesis: Uint8Array) {
   const transferTx = archethic.transaction
     .new()
     .setType("transfer")
     .addUCOTransfer(multisigGenesis, Utils.parseBigInt("1"));
 
   console.log("Sending 1 UCO to fund mulitisig chain...");
-  await archethic.rpcWallet.sendTransaction(transferTx);
+  await archethic.rpcWallet?.sendTransaction(transferTx);
 }
 
 async function createContractTransaction(
-  archethic,
-  { voters: voters, confirmationThreshold: confirmationThreshold },
-  seedSC,
+  archethic: Archethic,
+  setup: Setup,
+  seedSC: Uint8Array,
 ) {
+  const { voters: voters, confirmationThreshold: confirmationThreshold } = setup
   const { secret, authorizedKeys } = await getSCOwnnership(archethic, seedSC);
 
   const initContent = JSON.stringify({
@@ -110,12 +120,12 @@ async function createContractTransaction(
     .originSign(Utils.originPrivateKey);
 }
 
-async function getContractCode() {
+async function getContractCode(): Promise<string> {
   const response = await fetch("/contract.aesc");
   return response.text();
 }
 
-async function getSCOwnnership(archethic, seed) {
+async function getSCOwnnership(archethic: Archethic, seed: Uint8Array) {
   const aesKey = Crypto.randomSecretKey();
   const storageNoncePublicKey =
     await archethic.network.getStorageNoncePublicKey();
@@ -125,7 +135,7 @@ async function getSCOwnnership(archethic, seed) {
     authorizedKeys: [
       {
         publicKey: storageNoncePublicKey,
-        encryptedSecretKey: Crypto.ecEncrypt(aesKey, storageNoncePublicKey),
+        encryptedSecretKey: Utils.uint8ArrayToHex(Crypto.ecEncrypt(aesKey, storageNoncePublicKey)),
       },
     ],
   };
@@ -138,7 +148,7 @@ async function getSCOwnnership(archethic, seed) {
       <header class="mb-5 flex justify-between place-items-center">
         <h2 class="text-xl mb-5s">Setup</h2>
       </header>
-      <Setup
+      <SetupForm
         :voters="multisigSetup.voters"
         @new-voters="handleNewVoters"
         @new-confirmation-threshold="handleNewConfirmationThreshold"

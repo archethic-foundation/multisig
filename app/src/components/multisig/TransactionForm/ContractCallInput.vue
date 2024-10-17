@@ -1,19 +1,20 @@
-<script setup>
-import { ref, computed, watch } from "vue";
+<script setup lang="ts">
+import { ref, computed, watch, type Ref } from "vue";
 import { isValidAddress } from "@/utils";
 import Warning from "@/components/Warning.vue";
 import Button from "@/components/Button.vue";
 import { Contract } from "@archethicjs/sdk";
 
 import { useConnectionStore } from "@/stores/connection";
+import type { ContractAction } from "@archethicjs/sdk/dist/types";
 
 const emit = defineEmits(["submit"]);
 
 const contractRecipient = ref("");
 const contractAction = ref("");
-const contractArgs = ref([]);
+const contractArgs: Ref<any[]> = ref([]);
 const errMsg = ref("");
-const availableActions = ref([]);
+const availableActions = ref([] as ContractAction[]);
 
 const availableArgs = computed(() => {
   const action = availableActions.value.find(
@@ -54,7 +55,7 @@ async function fetchContractActions() {
     return;
   }
   const archethic = connectionStore.connection;
-  const res = await archethic.network.rawGraphQLQuery(`
+  const res = await archethic?.network.rawGraphQLQuery(`
     query {
 	lastTransaction(address: "${contractRecipient.value}") {
         data{

@@ -68,7 +68,8 @@ condition triggered_by: transaction, on: confirm_transaction(transaction_id), as
   address: (
     voter_genesis_address = transaction_genesis(transaction.previous_public_key)
     voters = State.get("voters")
-    if List.size(voters) > 1 do
+    confirmation_threshold = State.get("confirmation_threshold")
+    if confirmation_threshold > 1 do
         authorized?(voter_genesis_address) && !emitter?(voter_genesis_address, transaction_id) && !already_voted?(voter_genesis_address, transaction_id)
     else
         authorized?(voter_genesis_address)

@@ -1,12 +1,12 @@
-<script setup>
+<script setup lang="ts">
+import type { TokenTransfer } from "@/types";
 import { shortenAddress } from "@/utils";
 
-const props = defineProps({
-  transfer: {
-    type: Object,
-    required: true,
-  },
-});
+interface Props {
+  transfer: TokenTransfer
+}
+
+const props = defineProps<Props>();
 </script>
 
 <template>
