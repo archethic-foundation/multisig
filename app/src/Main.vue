@@ -38,8 +38,8 @@ function shortenAddress(address) {
   return `${address.slice(0, 8)}...${address.slice(address.length - 8)}`;
 }
 
-function connectWallet() {
-  connectionStore.connect();
+async function connectWallet() {
+  await connectionStore.connect();
 }
 
 onMounted(async () => {

@@ -26,10 +26,10 @@ export const useConnectionStore = defineStore("connection", (): ConnectionStore 
     if (isConnected.value && connection.value) {
       return connection.value;
     }
-    if (connecting.value) {
-      await new Promise((r) => setTimeout(r, 100));
-      return await connect();
-    }
+    // if (connecting.value) {
+    //   await new Promise((r) => setTimeout(r, 100));
+    //   return await connect();
+    // }
     connecting.value = true;
     const archethic = await getWalletConnection();
 
@@ -71,7 +71,7 @@ export type Account = {
 
 async function getWalletConnection(): Promise<Archethic> {
   const archethic = new Archethic(undefined); // To mention the wallet connection is used
-  archethic.rpcWallet?.setOrigin({ name: "Archethic Multisig CLI" });
+  archethic.rpcWallet?.setOrigin({ name: "Archethic Multisig" });
   console.log("Connecting to Archethic's wallet");
   await archethic.connect();
   return archethic;
@@ -80,7 +80,6 @@ async function getWalletConnection(): Promise<Archethic> {
 async function loadAccount(archethic: Archethic, changeCallback: (account: Account) => void) {
   const accountId = await archethic.rpcWallet?.getCurrentAccount();
   
-
   await archethic.rpcWallet?.onCurrentAccountChange(async () => {
     const accountId = await archethic.rpcWallet?.getCurrentAccount();
 

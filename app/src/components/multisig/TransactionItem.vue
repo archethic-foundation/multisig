@@ -51,7 +51,7 @@ watchEffect(async () => {
     alreadyVoted.value = confirmationsGenesisAddresses.includes(currentAddress);
 
     if (props.transaction.txData) {
-        resolvedTokens.value = await Promise.all(props.transaction.txData.tokenTransfers.map(async (token: TokenTransfer) => {
+        resolvedTokens.value = !props.transaction.txData.tokenTransfers ? [] : await Promise.all(props.transaction.txData.tokenTransfers.map(async (token: TokenTransfer) => {
             const tokenDetails = await archethic?.network.getToken(token.tokenAddress) as Token;
             return {
                 to: token.to,

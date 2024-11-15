@@ -104,12 +104,10 @@ async function fetchContractActions() {
     <label for="contractArgs" class="text-sm">Arguments</label>
     <div v-for="(arg, index) in availableArgs" class="p-1 text-sm flex">
       <label class="content-center flex-none">{{ arg }}</label>
-      <input
+      <textarea
         class="outline-none text-sm bg-transparent border-b p-3 rounded-md"
-        type="text"
         :placeholder="arg"
-        v-model="contractArgs[index]"
-      />
+        v-model="contractArgs[index]"></textarea>
     </div>
   </div>
 
