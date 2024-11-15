@@ -1,6 +1,7 @@
 import { Utils } from "@archethicjs/sdk";
 import { readFileSync, existsSync } from "fs";
 import { getWalletConnection, prompt } from "../utils.js";
+import { getProposeTransaction } from "@archethicjs/ae-multisig";
 
 export default {
   command: "new-transaction",
@@ -35,14 +36,15 @@ async function newTransaction() {
     2: tokenTransferPrompt,
     3: recipientPrompt,
     4: codePrompt,
-    5: voterPrompt,
-    6: confirmationThresholdPrompt,
+    5: contentPrompt,
+    6: voterPrompt,
+    7: confirmationThresholdPrompt,
   };
 
   const new_tx = await choice(mapChoices, {
-    tx_data: {
-      uco_transfers: [],
-      token_transfers: [],
+    txData: {
+      ucoTransfers: [],
+      tokenTransfers: [],
       code: "",
       recipients: [],
     },
@@ -53,10 +55,7 @@ async function newTransaction() {
 
   console.log(JSON.stringify(new_tx, null, 2));
 
-  const tx = archethic.transaction
-    .new()
-    .setType("transfer")
-    .addRecipient(multiSig, "new_transaction", [new_tx.tx_data, new_tx.setup]);
+  const tx = getProposeTransaction(archethic, multiSig, new_tx.txData, new_tx.setup)
 
   const { transactionAddress } = await archethic.rpcWallet.sendTransaction(tx);
   console.log(`Transaction confirmed: ${transactionAddress}`);
@@ -90,8 +89,9 @@ async function choice(mapChoices, tx) {
 - 2: Add token transfer
 - 3: Add smart contract call
 - 4: Propose new code
-- 5: Add new voters
-- 6: Set new confirmation threshold
+- 5: Propose new content
+- 6: Add new voters
+- 7: Set new confirmation threshold
 - ${selection}: Send the transaction
 -------------------------------------
 > `;
@@ -125,7 +125,7 @@ async function ucoTransferPrompt(tx) {
     return amount;
   });
 
-  tx.tx_data.uco_transfers.push({ to: recipient, amount: amount });
+  tx.txData.ucoTransfers.push({ to: recipient, amount: amount });
   return tx;
 }
 
@@ -152,10 +152,10 @@ async function tokenTransferPrompt(tx) {
     return input;
   });
 
-  tx.tx_data.token_transfers.push({
+  tx.txData.tokenTransfers.push({
     to: recipient,
     amount: amount,
-    token_address: token,
+    tokenAddress: token,
   });
   return tx;
 }
@@ -185,7 +185,7 @@ async function recipientPrompt(tx) {
     },
   );
 
-  tx.tx_data.recipients.push({
+  tx.txData.recipients.push({
     address: recipient,
     action: action,
     args: args,
@@ -205,7 +205,18 @@ async function codePrompt(tx) {
   );
 
   const code = readFileSync(codeFilePath, "utf8");
-  tx.tx_data.code = code;
+  tx.txData.code = code;
+  return tx;
+}
+
+async function contentPrompt(tx) {
+  const content = await prompt(
+    "Enter content to propose:\n",
+    (content) => {
+      return content;
+    },
+  );
+  tx.txData.content = content;
   return tx;
 }
 
@@ -224,7 +235,7 @@ async function voterPrompt(tx) {
     },
   );
 
-  tx.setup.new_voters = voters;
+  tx.setup.newVoters = voters;
   return tx;
 }
 

@@ -1,3 +1,4 @@
+import { getConfirmTransaction } from "@archethicjs/ae-multisig";
 import { getWalletConnection, prompt } from "../utils.js";
 
 export default {
@@ -32,10 +33,7 @@ async function confirmTransaction() {
 
   await assertTransactionId(archethic, multiSig, transactionId);
 
-  const tx = archethic.transaction
-    .new()
-    .setType("transfer")
-    .addRecipient(multiSig, "confirm_transaction", [transactionId]);
+  const tx = getConfirmTransaction(archethic , multiSig, transactionId)
 
   const { transactionAddress } = await archethic.rpcWallet.sendTransaction(tx);
   console.log(`Transaction confirmed: ${transactionAddress}`);

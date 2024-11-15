@@ -5,8 +5,8 @@ import {
   getWalletConnection,
   prompt,
   sendTransactionAsync,
-  getContractCode,
 } from "../utils.js";
+import { getDeployTransaction } from "@archethicjs/ae-multisig";
 
 export default {
   command: "deploy",
@@ -51,16 +51,8 @@ async function fundSC(archethic, multiSigGenesis) {
 async function createContractTransaction(archethic, currentAddress, seedSC) {
   const { secret, authorizedKeys } = await getSCOwnnership(archethic, seedSC);
 
-  const initContent = JSON.stringify({
-    voters: await promptInitialVoters(currentAddress),
-  });
-
-  return archethic.transaction
-    .new()
-    .setType("contract")
-    .setCode(getContractCode())
-    .addOwnership(secret, authorizedKeys)
-    .setContent(initContent)
+  const tx = getDeployTransaction(archethic, { voters: await promptInitialVoters(currentAddress)}, secret, authorizedKeys)
+  return tx
     .build(seedSC, 0)
     .originSign(Utils.originPrivateKey);
 }

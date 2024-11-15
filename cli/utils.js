@@ -1,9 +1,5 @@
 import Archethic from "@archethicjs/sdk";
 import { createInterface } from "readline";
-import path from "path";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { readFileSync } from "fs";
 
 const readline = createInterface({
   input: process.stdin,
@@ -43,13 +39,4 @@ export function sendTransactionAsync(tx) {
       })
       .send();
   });
-}
-
-export function getContractCode() {
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  const contractSourceFile = path.resolve(
-    __dirname,
-    "../app/public/contract.aesc",
-  );
-  return readFileSync(contractSourceFile, "utf8");
 }

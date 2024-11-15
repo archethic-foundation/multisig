@@ -15,6 +15,7 @@ import { useConnectionStore } from "@/stores/connection";
 import type { Setup, Transaction, TxData, TxSetup, Voter } from "@/types";
 import type { Balance, Token } from "@archethicjs/sdk/dist/types";
 import type TransactionBuilder from "@archethicjs/sdk/dist/transaction_builder";
+import { getConfirmTransaction, getProposeTransaction, type MultisigSetup, type MultisigTransaction, type Recipient, type TokenTransfer, type UCOTransfer } from "ae-multisig";
 
 const route = useRoute();
 
@@ -244,38 +245,34 @@ function explode_tx(txData?: Record<string, any>, setup?: Record<string, any>): 
 }
 
 async function proposeNewTransaction(proposeTransaction?: TxData, proposeSetup?: TxSetup) {
-  const newTx = proposeTransaction
+  const newTx: MultisigTransaction = proposeTransaction
     ? {
-        uco_transfers: proposeTransaction.ucoTransfers,
-        token_transfers: proposeTransaction.tokenTransfers,
-        recipients: proposeTransaction.recipients,
+        ucoTransfers: proposeTransaction.ucoTransfers as UCOTransfer[],
+        tokenTransfers: proposeTransaction.tokenTransfers as TokenTransfer[],
+        recipients: proposeTransaction.recipients as Recipient[],
         code: proposeTransaction.code,
         content: proposeTransaction.content,
       }
     : {
-        uco_transfers: [],
-        token_transfers: [],
+        ucoTransfers: [],
+        tokenTransfers: [],
         recipients: [],
         code: "",
         content: "",
       };
 
-  const newSetup = proposeSetup
+  const newSetup: MultisigSetup = proposeSetup
     ? {
-        new_voters: proposeSetup.newVoters,
-        removed_voters: proposeSetup.removedVoters,
-        confirmation_threshold: proposeSetup.newThreshold,
+        newVoters: proposeSetup.newVoters,
+        removedVoters: proposeSetup.removedVoters,
+        confirmationThreshold: proposeSetup.newThreshold,
       }
     : {};
 
-  const chainSize =
-    await archethic?.transaction.getTransactionIndex(contractAddress);
-
-  const tx = archethic?.transaction
-    .new()
-    .setType("transfer")
-    .addRecipient(contractAddress, "new_transaction", [newTx, newSetup]);
-
+  const chainSize = await archethic?.transaction.getTransactionIndex(contractAddress);
+    
+  const tx = getProposeTransaction(archethic as Archethic, contractAddress, newTx, newSetup)
+  
   await archethic?.rpcWallet?.sendTransaction(tx as TransactionBuilder);
   await waitNewTransaction(contractAddress, chainSize as number);
   await loadDetails();
@@ -318,12 +315,7 @@ async function handleTransactionConfirmation(transactionId: number) {
   const chainSize =
     await archethic?.transaction.getTransactionIndex(contractAddress) as number;
 
-  const tx = archethic?.transaction
-    .new()
-    .setType("transfer")
-    .addRecipient(contractAddress, "confirm_transaction", [
-      Number(transactionId),
-    ]);
+  const tx = getConfirmTransaction(archethic as Archethic, contractAddress, Number(transactionId))
 
   try {
     await archethic?.rpcWallet?.sendTransaction(tx as TransactionBuilder);

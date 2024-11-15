@@ -10,6 +10,8 @@ import { useRouter } from "vue-router";
 import { useConnectionStore } from "@/stores/connection";
 import type { Setup, Voter } from "@/types";
 import { useVaultStore } from "@/stores/vaults";
+import { getDeployTransaction } from "ae-multisig";
+import type { ExtendedTransactionBuilder } from "@archethicjs/sdk/dist/transaction";
 
 const connectionStore = useConnectionStore();
 const vaultStore = useVaultStore();
@@ -101,28 +103,12 @@ async function createContractTransaction(
   archethic: Archethic,
   setup: Setup,
   seedSC: Uint8Array,
-) {
-  const { voters: voters, confirmationThreshold: confirmationThreshold } = setup
+): Promise<ExtendedTransactionBuilder> {
   const { secret, authorizedKeys } = await getSCOwnnership(archethic, seedSC);
-
-  const initContent = JSON.stringify({
-    voters: voters.map(({ address }) => address),
-    confirmationThreshold: confirmationThreshold,
-  });
-
-  return archethic.transaction
-    .new()
-    .setType("contract")
-    .setCode(await getContractCode())
-    .addOwnership(secret, authorizedKeys)
-    .setContent(initContent)
+  const tx = getDeployTransaction(archethic, { voters: setup.voters.map(v => v.address), confirmationThreshold: setup.confirmationThreshold}, secret, authorizedKeys)
+  return tx
     .build(seedSC, 0)
-    .originSign(Utils.originPrivateKey);
-}
-
-async function getContractCode(): Promise<string> {
-  const response = await fetch("/contract.aesc");
-  return response.text();
+    .originSign(Utils.originPrivateKey) as ExtendedTransactionBuilder;
 }
 
 async function getSCOwnnership(archethic: Archethic, seed: Uint8Array) {
