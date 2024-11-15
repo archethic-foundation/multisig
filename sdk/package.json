@@ -1,0 +1,30 @@
+{
+  "name": "@archethicjs/ae-multisig",
+  "version": "1.0.0",
+  "main": "./dist/ae-multisig.es.js",
+  "module": "./dist/ae-multisig.es.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/ae-multisig.es.js"
+    }
+  },
+  "types": "./dist/ae-multisig.es.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vite-plugin-dts": "^4.3.0"
+  },
+  "dependencies": {
+    "@archethicjs/sdk": "^1.21.2"
+  }
+}
