@@ -12,7 +12,7 @@ export default defineConfig({
     lib: {
       name: 'index',
       entry: path.resolve(__dirname, 'lib/main.ts'),
-      fileName: (format, name) => `${name}.${format}.js`
+      fileName: (format) => `index.${format}.js`
     }
   }
 })
