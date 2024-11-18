@@ -1,5 +1,5 @@
 {
-  "name": "@archethicjs/ae-multisig",
+  "name": "@archethicjs/multisig-sdk",
   "version": "1.0.0",
   "main": "./dist/ae-multisig.es.js",
   "module": "./dist/ae-multisig.es.js",

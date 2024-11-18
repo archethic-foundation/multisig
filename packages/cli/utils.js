@@ -7,7 +7,7 @@ const readline = createInterface({
 });
 
 export async function getWalletConnection() {
-  const archethic = new Archethic("ws://127.0.0.1:12345");
+  const archethic = new Archethic();
   archethic.rpcWallet.setOrigin({ name: "Archethic Multisig CLI" });
   await archethic.connect();
 

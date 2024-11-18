@@ -42,7 +42,7 @@ async function fundSC(archethic, multiSigGenesis) {
   const transferTx = archethic.transaction
     .new()
     .setType("transfer")
-    .addUCOTransfer(multiSigGenesis, Utils.toBigInt(1));
+    .addUCOTransfer(multiSigGenesis, Utils.parseBigInt('1'));
 
   console.log("Sending 1 UCO to fund mulitisig chain...");
   await archethic.rpcWallet.sendTransaction(transferTx);

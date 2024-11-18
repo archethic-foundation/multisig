@@ -15,7 +15,7 @@ import { useConnectionStore } from "@/stores/connection";
 import type { Setup, Transaction, TxData, TxSetup, Voter } from "@/types";
 import type { Balance, Token } from "@archethicjs/sdk/dist/types";
 import type TransactionBuilder from "@archethicjs/sdk/dist/transaction_builder";
-import { getConfirmTransaction, getProposeTransaction, type MultisigSetup, type MultisigTransaction, type Recipient, type TokenTransfer, type UCOTransfer } from "ae-multisig";
+import { getConfirmTransaction, getProposeTransaction, type MultisigSetup, type MultisigTransaction, type Recipient, type TokenTransfer, type UCOTransfer } from "@archethicjs/multisig-sdk";
 
 const route = useRoute();
 

@@ -39,6 +39,8 @@ function submit() {
     return;
   }
 
+  console.log(contractArgs.value)
+
   emit("submit", {
     address: contractRecipient.value,
     action: contractAction.value,

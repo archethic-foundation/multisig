@@ -10,7 +10,7 @@ import { useRouter } from "vue-router";
 import { useConnectionStore } from "@/stores/connection";
 import type { Setup, Voter } from "@/types";
 import { useVaultStore } from "@/stores/vaults";
-import { getDeployTransaction } from "ae-multisig";
+import { getDeployTransaction } from "@archethicjs/multisig-sdk";
 import type { ExtendedTransactionBuilder } from "@archethicjs/sdk/dist/transaction";
 
 const connectionStore = useConnectionStore();

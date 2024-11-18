@@ -1,5 +1,5 @@
 import { ref, computed, type Ref, type ComputedRef } from "vue";
-import { defineStore, type SetupStoreDefinition, type StoreActions, type StoreDefinition } from "pinia";
+import { defineStore } from "pinia";
 
 import Archethic from "@archethicjs/sdk";
 

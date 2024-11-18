@@ -1,5 +1,5 @@
 {
-  "name": "Archethic Multisig CLI",
+  "name": "@archethicjs/multisig-cli",
   "version": "1.0.0",
   "description": "",
   "main": "multisig.js",
@@ -16,7 +16,7 @@
   "author": "Archethic Foundation",
   "license": "AGPL-3",
   "dependencies": {
-    "@archethicjs/ae-multisig": "file:../sdk",
+    "@archethicjs/multisig-sdk": "^1.0.0",
     "@archethicjs/sdk": "^1.20.3",
     "yargs": "^17.7.2"
   }

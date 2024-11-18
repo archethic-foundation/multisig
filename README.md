@@ -9,7 +9,7 @@ A webapp is available to deploy and interact with a multisignature contract
 ### Installation
 
 ```bash
-cd app
+cd packages/app
 npm install
 ```
 
@@ -34,7 +34,7 @@ A CLI is available to deploy and interact with a multisignature contract
 ### Installation
 
 ```bash
-cd cli
+cd packages/cli
 npm install
 ```
 
