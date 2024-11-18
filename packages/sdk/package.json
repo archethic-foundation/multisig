@@ -15,9 +15,15 @@
     "build": "vite build",
     "preview": "vite preview"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "prepublishOnly": "npm run build",
+  "keywords": [
+    "archethic",
+    "sdk",
+    "multisig",
+    "smart contract"
+  ],
+  "author": "Archethic Foundation",
+  "license": "AGPL-3",
   "description": "",
   "devDependencies": {
     "typescript": "^5.6.3",
