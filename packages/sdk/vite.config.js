@@ -8,11 +8,11 @@ export default defineConfig({
     rollupTypes: true
   })],
   build: {
+    minify: false,
     lib: {
-      formats: ['es'],
+      name: 'index',
       entry: path.resolve(__dirname, 'lib/main.ts'),
-      name: 'ae-multisig',
-      fileName: (format) => `index.${format}.js`
+      fileName: (format, name) => `${name}.${format}.js`
     }
   }
 })
