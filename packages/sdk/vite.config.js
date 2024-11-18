@@ -12,7 +12,7 @@ export default defineConfig({
       formats: ['es'],
       entry: path.resolve(__dirname, 'lib/main.ts'),
       name: 'ae-multisig',
-      fileName: (format) => `ae-multisig.${format}.js`
+      fileName: (format) => `index.${format}.js`
     }
   }
 })

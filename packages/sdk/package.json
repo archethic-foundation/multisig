@@ -1,21 +1,21 @@
 {
   "name": "@archethicjs/multisig-sdk",
-  "version": "1.0.0",
-  "main": "./dist/ae-multisig.es.js",
-  "module": "./dist/ae-multisig.es.js",
+  "version": "1.0.1",
+  "main": "./dist/index.es.js",
+  "module": "./dist/index.es.js",
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/ae-multisig.es.js"
+      "import": "./dist/index.es.js"
     }
   },
-  "types": "./dist/ae-multisig.es.d.ts",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build"
   },
-  "prepublishOnly": "npm run build",
   "keywords": [
     "archethic",
     "sdk",
