@@ -1,10 +1,11 @@
 {
   "name": "@archethicjs/multisig-sdk",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "./dist/index.es.js",
   "module": "./dist/index.es.js",
   "type": "module",
   "types": "./dist/index.d.ts",
+  "files": ["./dist"],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
