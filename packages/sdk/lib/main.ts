@@ -49,21 +49,21 @@ export function getDeployTransaction(archethic: Archethic, setup: MultisigInit, 
     .addOwnership(encryptedSeed, authorizedEncryptedKeys)
 }
 
-export function getProposeTransaction(archethic: Archethic, contractAddress: string, txData: MultisigTransaction, setup: MultisigSetup): TransactionBuilder {
+export function getProposeTransaction(archethic: Archethic, contractAddress: string, txData?: MultisigTransaction, setup?: MultisigSetup): TransactionBuilder {
   const contractTxData = {
-    content: txData.content,
-    code: txData.code,
-    ucoTransfers: txData.ucoTransfers,
-    tokenTransfers: txData.tokenTransfers.map((t) => {
+    content: txData ? txData.content : "",
+    code: txData ? txData.code : "",
+    ucoTransfers: txData ? txData.ucoTransfers : [],
+    tokenTransfers: txData && txData.tokenTransfers ? txData.tokenTransfers.map((t) => {
       return { to: t.to, amount: t.amount, token_address: t.tokenAddress, token_id: t.tokenId || 0 }
-    }),
-    recipients: txData.recipients
+    }) : [],
+    recipients: txData ? txData.recipients : []
   }
 
   const contractSetup = {
-    new_voters: setup.newVoters,
-    revoved_voters: setup.removedVoters,
-    confirmation_threshold: setup.confirmationThreshold
+    new_voters: setup ? setup.newVoters : [],
+    revoved_voters: setup ? setup.removedVoters : [],
+    confirmation_threshold: setup ? setup.confirmationThreshold : []
   }
 
   return archethic.transaction
