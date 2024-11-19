@@ -53,8 +53,8 @@ export function getProposeTransaction(archethic: Archethic, contractAddress: str
   const contractTxData = txData ? {
     content: txData.content || "",
     code: txData.code || "",
-    ucoTransfers: txData.ucoTransfers || [],
-    tokenTransfers: txData.tokenTransfers ? txData.tokenTransfers.map((t) => {
+    uco_transfers: txData.ucoTransfers || [],
+    token_transfers: txData.tokenTransfers ? txData.tokenTransfers.map((t) => {
       return { to: t.to, amount: t.amount, token_address: t.tokenAddress, token_id: t.tokenId || 0 }
     }) : [],
     recipients: txData.recipients || []
