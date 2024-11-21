@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "description": "Multisig Solution based on Archethic",
   "workspaces": ["packages/*"],
-  "private": true
+  "private": true,
+  "scripts": {
+    "build": "npm run --prefix packages/sdk build"
+  }
 }

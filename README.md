@@ -2,16 +2,16 @@
 
 Multisig Solution based on Archethic
 
+## Installation
+
+```bash
+npm install
+npm run build
+```
+
 ## Web app
 
 A webapp is available to deploy and interact with a multisignature contract
-
-### Installation
-
-```bash
-cd packages/app
-npm install
-```
 
 Archethic's wallet must be installed and running
 
@@ -30,13 +30,6 @@ The website should be available at http://localhost:5173/
 ## CLI
 
 A CLI is available to deploy and interact with a multisignature contract
-
-### Installation
-
-```bash
-cd packages/cli
-npm install
-```
 
 Archethic's wallet must be installed and running
 
