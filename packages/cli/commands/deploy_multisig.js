@@ -6,7 +6,7 @@ import {
   prompt,
   sendTransactionAsync,
 } from "../utils.js";
-import { getDeployTransaction } from "@archethicjs/ae-multisig";
+import { getDeployTransaction } from "@archethicjs/multisig-sdk";
 
 export default {
   command: "deploy",

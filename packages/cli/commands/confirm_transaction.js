@@ -1,4 +1,4 @@
-import { getConfirmTransaction } from "@archethicjs/ae-multisig";
+import { getConfirmTransaction } from "@archethicjs/multisig-sdk";
 import { getWalletConnection, prompt } from "../utils.js";
 
 export default {

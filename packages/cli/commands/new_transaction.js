@@ -1,7 +1,7 @@
 import { Utils } from "@archethicjs/sdk";
 import { readFileSync, existsSync } from "fs";
 import { getWalletConnection, prompt } from "../utils.js";
-import { getProposeTransaction } from "@archethicjs/ae-multisig";
+import { getProposeTransaction } from "@archethicjs/multisig-sdk";
 
 export default {
   command: "new-transaction",
