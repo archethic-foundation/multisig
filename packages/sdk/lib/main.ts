@@ -1,6 +1,7 @@
 import Archethic from "@archethicjs/sdk";
 import TransactionBuilder from "@archethicjs/sdk/dist/transaction_builder";
 import { AuthorizedKeyUserInput } from "@archethicjs/sdk/dist/types";
+import {Contract} from "@archethicjs/sdk/dist/contract"
 import { formatBigInt, uint8ArrayToHex } from "@archethicjs/sdk/dist/utils";
 
 export type MultisigInit = {
@@ -16,15 +17,15 @@ export type MultisigSetup = {
 
 export class MultisigTransaction {
   content: string = "";
-  code: string = "";
+  contract?: Contract;
   ucoTransfers: UCOTransfer[] = [];
   tokenTransfers: TokenTransfer[] = [];
   recipients: Recipient[] = [] ;
 
   static fromTransactionBuilder(tx: TransactionBuilder): MultisigTransaction {
     return {
-      content: tx.data.content ? new TextDecoder().decode(tx.data.content) : "",
-      code: tx.data.code ? new TextDecoder().decode(tx.data.code) : "",
+      content: tx.data.content ? tx.data.content : "",
+      contract: tx.data.contract,
       ucoTransfers: tx.data.ledger.uco.transfers.map((t): Transfer => {
         return { to: uint8ArrayToHex(t.to), amount: parseFloat(formatBigInt(t.amount)) }
       }),
@@ -52,13 +53,13 @@ export type TokenTransfer = {
 export type Recipient = {
   address: string;
   action?: string;
-  args?: any[]
+  args?: any[] | object
 }
 
-export function getDeployTransaction(archethic: Archethic, setup: MultisigInit, encryptedSeed: Uint8Array | string, authorizedEncryptedKeys: AuthorizedKeyUserInput[]): TransactionBuilder {
+export function getDeployTransaction(archethic: Archethic, setup: MultisigInit, encryptedSeed: Uint8Array | string, authorizedEncryptedKeys: AuthorizedKeyUserInput[], contract: Contract): TransactionBuilder {
   return archethic.transaction.new()
     .setType("contract")
-    .setCode(code)
+    .setContract(contract)
     .setContent(JSON.stringify({
       voters: setup.voters,
       confirmation_threshold: setup.confirmationThreshold,
@@ -69,7 +70,7 @@ export function getDeployTransaction(archethic: Archethic, setup: MultisigInit, 
 export function getProposeTransaction(archethic: Archethic, contractAddress: string, txData?: MultisigTransaction, setup?: MultisigSetup): TransactionBuilder {
   const contractTxData = txData ? {
     content: txData.content || "",
-    code: txData.code || "",
+    code: "",
     uco_transfers: txData.ucoTransfers || [],
     token_transfers: txData.tokenTransfers ? txData.tokenTransfers.map((t) => {
       return { to: t.to, amount: t.amount, token_address: t.tokenAddress, token_id: t.tokenId || 0 }
