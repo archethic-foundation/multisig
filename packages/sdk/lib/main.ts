@@ -1,6 +1,7 @@
 import Archethic from "@archethicjs/sdk";
 import TransactionBuilder from "@archethicjs/sdk/dist/transaction_builder";
 import { AuthorizedKeyUserInput } from "@archethicjs/sdk/dist/types";
+import { formatBigInt, uint8ArrayToHex } from "@archethicjs/sdk/dist/utils";
 
 export type MultisigInit = {
   voters: string[],
@@ -13,12 +14,28 @@ export type MultisigSetup = {
   confirmationThreshold?: number;
 }
 
-export type MultisigTransaction = {
-  content?: string;
-  code?: string;
-  ucoTransfers: UCOTransfer[];
-  tokenTransfers: TokenTransfer[];
-  recipients: Recipient[];
+export class MultisigTransaction {
+  content: string = "";
+  code: string = "";
+  ucoTransfers: UCOTransfer[] = [];
+  tokenTransfers: TokenTransfer[] = [];
+  recipients: Recipient[] = [] ;
+
+  static fromTransactionBuilder(tx: TransactionBuilder): MultisigTransaction {
+    return {
+      content: tx.data.content ? new TextDecoder().decode(tx.data.content) : "",
+      code: tx.data.code ? new TextDecoder().decode(tx.data.code) : "",
+      ucoTransfers: tx.data.ledger.uco.transfers.map((t): Transfer => {
+        return { to: uint8ArrayToHex(t.to), amount: parseFloat(formatBigInt(t.amount)) }
+      }),
+      tokenTransfers: tx.data.ledger.token.transfers.map((t): TokenTransfer => {
+        return { to: uint8ArrayToHex(t.to), amount: parseFloat(formatBigInt(t.amount)), tokenAddress: uint8ArrayToHex(t.tokenAddress), tokenId: t.tokenId || 0 }
+      }),
+      recipients: tx.data.recipients.map((r): Recipient => {
+        return { address: uint8ArrayToHex(r.address), action: r.action, args: r.args}
+      })
+    }
+  }
 }
 
 interface Transfer {
@@ -29,7 +46,7 @@ interface Transfer {
 export type UCOTransfer = Transfer;
 export type TokenTransfer = {
   tokenAddress: string;
-  tokenId?: string;
+  tokenId?: number;
 } & Transfer
 
 export type Recipient = {
