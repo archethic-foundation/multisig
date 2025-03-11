@@ -1,6 +1,6 @@
-import { Utils } from "@archethicjs/sdk";
+import Archethic, { Crypto, Utils } from "@archethicjs/sdk";
 import { readFileSync, existsSync } from "fs";
-import { getWalletConnection, prompt } from "../utils.js";
+import { getWalletConnection, prompt, secretPrompt } from "../utils.js";
 import { getProposeTransaction } from "@archethicjs/multisig-sdk";
 
 export default {
@@ -11,56 +11,136 @@ export default {
 };
 
 async function newTransaction() {
-  const archethic = await getWalletConnection();
-
-  const multiSig = await promptMultiSig();
-
-  const chainSizeResponse = await archethic.network.rawGraphQLQuery(`
-  query{
-    lastTransaction(address: "${multiSig}") {
-      chainLength
+  try {
+    const connectionType = await prompt(
+      "Select connection type (1: Wallet, 2: Direct): ",
+      (input) => {
+        if (input !== "1" && input !== "2") {
+          throw new Error("Invalid selection. Please choose 1 or 2");
+        }
+        return input;
+      }
+    );
+  
+    let archethic
+    if (connectionType == "2") {
+      console.log("Direct connection selected.");
+      const connectionEndpoint = await prompt(
+        "Enter network endpoint: ",
+        (input) => {
+          return input;
+        }
+      );
+      archethic = new Archethic(connectionEndpoint)
+      await archethic.connect()
     }
+    else {
+      console.log("Wallet connection selected.");
+      archethic = await getWalletConnection();
+    }
+  
+    const multiSig = await promptMultiSig();
+  
+    const chainSizeResponse = await archethic.network.rawGraphQLQuery(`
+    query{
+      lastTransaction(address: "${multiSig}") {
+        chainLength
+      }
+    }
+    `);
+  
+    if (
+      chainSizeResponse == null ||
+      (chainSizeResponse.lastTransaction &&
+        chainSizeResponse.lastTransaction.chainLength == 0)
+    ) {
+      throw new Error("Multisig doesn't exists");
+    }
+  
+    const mapChoices = {
+      1: ucoTransferPrompt,
+      2: tokenTransferPrompt,
+      3: recipientPrompt,
+      4: codePrompt,
+      5: contentPrompt,
+      6: voterPrompt,
+      7: confirmationThresholdPrompt,
+    };
+  
+    const selection = '8'
+    const menu = `
+    -------------------------------------
+        Multisig transaction builder
+    -------------------------------------
+    - 1: Add UCO transfer
+    - 2: Add token transfer
+    - 3: Add smart contract call
+    - 4: Propose new code
+    - 5: Propose new content
+    - 6: Add new voters
+    - 7: Set new confirmation threshold
+    - ${selection}: Send the transaction
+    -------------------------------------
+    `;
+  
+    let new_tx = {
+      txData: {
+        ucoTransfers: [],
+        tokenTransfers: [],
+        recipients: [],
+      },
+      setup: {},
+    }
+    let choice
+    while(choice != selection) {
+      console.log(menu)
+      choice = await prompt("Enter your choice:", x => x)
+      if (choice != selection) {
+        new_tx = await mapChoices[choice](new_tx);
+      }
+    } 
+  
+    console.log("Transaction to sent");
+  
+    console.log(JSON.stringify(new_tx, null, 2));
+  
+    const tx = getProposeTransaction(archethic, multiSig, new_tx.txData, new_tx.setup)
+    const transactionAddress = await sendProposal(archethic, tx)
+    console.log(`Transaction confirmed: ${transactionAddress}`);
+  
+    process.exit(0);
+  } catch (e) {
+    console.error(e);
+    process.exit(1);
   }
-  `);
+}
 
-  if (
-    chainSizeResponse == null ||
-    (chainSizeResponse.lastTransaction &&
-      chainSizeResponse.lastTransaction.chainLength == 0)
-  ) {
-    throw new Error("Multisig doesn't exists");
+async function sendProposal(archethic, tx) {
+  if (archethic.rpcWallet !== undefined) {
+    const { transactionAddress } = await archethic.rpcWallet.sendTransaction(tx);
+    return transactionAddress
+  } else {
+    const seed = await secretPrompt("Enter the seed of the current account: ", (input) => input)  
+    const currentAddress = Crypto.deriveAddress(seed)
+    const lastIndex = await archethic.transaction.getTransactionIndex(currentAddress)
+
+    return new Promise((resolve, reject) => {
+      tx
+      .build(seed, lastIndex)
+      .originSign(Utils.originPrivateKey)
+      .on("fullConfirmation", () => {
+        console.log(`Transaction confirmed`);
+        resolve(Utils.uint8ArrayToHex(tx.address))
+      })
+      .on("sent", () => {
+        console.log(`Transaction ${Utils.uint8ArrayToHex(tx.address)} sent`);
+      })
+      .on("error", (error, reason) => {
+        reject(`Error: ${error} (${JSON.stringify(reason)})`)
+      })
+      .send()
+    })
   }
-
-  const mapChoices = {
-    1: ucoTransferPrompt,
-    2: tokenTransferPrompt,
-    3: recipientPrompt,
-    4: codePrompt,
-    5: contentPrompt,
-    6: voterPrompt,
-    7: confirmationThresholdPrompt,
-  };
-
-  const new_tx = await choice(mapChoices, {
-    txData: {
-      ucoTransfers: [],
-      tokenTransfers: [],
-      code: "",
-      recipients: [],
-    },
-    setup: {},
-  });
-
-  console.log("Transaction to sent");
-
-  console.log(JSON.stringify(new_tx, null, 2));
-
-  const tx = getProposeTransaction(archethic, multiSig, new_tx.txData, new_tx.setup)
-
-  const { transactionAddress } = await archethic.rpcWallet.sendTransaction(tx);
-  console.log(`Transaction confirmed: ${transactionAddress}`);
-
-  process.exit(0);
 }
 
 async function promptMultiSig() {
@@ -74,38 +154,6 @@ async function promptMultiSig() {
     }
 
     return input;
-  });
-}
-
-async function choice(mapChoices, tx) {
-  const selection = Object.keys(mapChoices).length + 1;
-
-  const menu = `
-
--------------------------------------
-    Multisig transaction builder
--------------------------------------
-- 1: Add UCO transfer
-- 2: Add token transfer
-- 3: Add smart contract call
-- 4: Propose new code
-- 5: Propose new content
-- 6: Add new voters
-- 7: Set new confirmation threshold
-- ${selection}: Send the transaction
--------------------------------------
-> `;
-
-  return await prompt(menu, async (input) => {
-    if (input != selection) {
-      if (!Object.keys(mapChoices).includes(input)) {
-        return r(choice(mapChoices, tx));
-      }
-      tx = await mapChoices[input](tx);
-      return choice(mapChoices, tx);
-    }
-
-    return tx;
   });
 }
 
