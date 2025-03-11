@@ -1,23 +1,20 @@
 {
   "name": "@archethicjs/multisig-wasm",
-  "description": "ae-contract",
   "version": "0.1.0",
   "type": "module",
   "private": true,
   "scripts": {
     "build": "aewasm build",
     "build:release": "aewasm build --mode release",
-    "test": "as-test test",
-    "test:integration": "npm run build && vitest run --dir ./tests"
+    "test": "npm run build && vitest run --dir ./tests"
   },
   "dependencies": {
     "@archethicjs/ae-contract-as": "^1.0.0",
-    "@archethicjs/ae-contract-test": "^1.0.0",
+    "@archethicjs/ae-contract-test": "^1.0.11",
     "assemblyscript": "^0.27.29"
   },
   "devDependencies": {
-    "@archethicjs/sdk": "^1.21.2",
-    "@assemblyscript/wasi-shim": "^0.1.0",
+    "@archethicjs/sdk": "^2.0.0-rc.1",
     "@types/node": "^22.1.0",
     "as-test": "^0.3.4",
     "typescript": "^5.5.4",

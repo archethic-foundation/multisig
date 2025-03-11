@@ -17,7 +17,7 @@
   "license": "AGPL-3",
   "dependencies": {
     "@archethicjs/multisig-sdk": "^1.0.0",
-    "@archethicjs/sdk": "^1.20.3",
+    "@archethicjs/sdk": "^2.0.0-rc.1",
     "yargs": "^17.7.2"
   }
 }
