@@ -226,7 +226,7 @@ describe("getTransactionDetails", () => {
             transaction: incomingTx
         })
 
-        const tx: any = contract.getTransactionDetails(1)
+        const tx: any = contract.getTransactionDetails({ transactionId: 1})
         expect(tx.status).toBe("pending")
         expect(tx.txData.content).toBe("hello")
     })
