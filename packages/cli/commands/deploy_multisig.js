@@ -51,13 +51,13 @@ async function deploy() {
   
     const seedSC = crypto.randomBytes(32);
     const multiSigGenesis = Crypto.deriveAddress(seedSC);
-  
-    const { currentAddress } = await fundSC(archethic, multiSigGenesis, connectionType);
+	
+    const currentAddress = await getCurrentAddress(archethic, connectionType)
   
     console.log(`Creating multisig contract at ${Utils.uint8ArrayToHex(multiSigGenesis)}`);
     const multisigTx = await createContractTransaction(
       archethic,
-      Utils.uint8ArrayToHex(currentAddress),
+      currentAddress,
       seedSC,
     );
   
@@ -70,49 +70,61 @@ async function deploy() {
   }
 }
 
-async function fundSC(archethic, multiSigGenesis, connectionType) {
-  const transferTx = archethic.transaction
-    .new()
-    .setType("transfer")
-    .addUCOTransfer(multiSigGenesis, Utils.parseBigInt('5'));
-
-  console.log("Sending 1 UCO to fund mulitisig chain...");
+async function getCurrentAddress(archethic, connectionType) {
   if (connectionType == "2") {
-    return new Promise(async (resolve, reject) => {
-      const seed = await secretPrompt("Enter the seed of the current account: ", (input) => input)  
-      const currentAddress = Crypto.deriveAddress(seed)
-      const lastIndex = await archethic.transaction.getTransactionIndex(Crypto.deriveAddress(seed))
-
-      transferTx
-        .build(seed, lastIndex)
-        .originSign(Utils.originPrivateKey)
-        .on("fullConfirmation", () => {
-          console.log(`Transaction confirmed`);
-          resolve({ 
-            fundingAddress: Utils.uint8ArrayToHex(transferTx.address),
-            currentAddress: currentAddress
-          })
-        })
-        .on("sent", () => {
-          console.log(`Transaction ${Utils.uint8ArrayToHex(transferTx.address)} sent`);
-        })
-        .on("error", (error, reason) => {
-          reject(`Error: ${error} (${JSON.stringify(reason)})`)
-        })
-        .send()
-    })
-  } else {
-    await archethic.rpcWallet.sendTransaction(transferTx);
-    const { genesisAddress } =
-        await archethic.rpcWallet.getCurrentAccount();
-  
-    const currentAddress = genesisAddress
-    return { 
-      fundingAddress: Utils.uint8ArrayToHex(transferTx.address),
-      currentAddress: currentAddress
-    }
+     const seed = await secretPrompt("Enter the seed of the current account: ", (input) => input)  
+     const currentAddress = Crypto.deriveAddress(seed)
+     return Utils.uint8ArrayToHex(currentAddress)
+  }
+  else {
+     const { genesisAddress } = await archethic.rpcWallet.getCurrentAccount();
+     return genesisAddress
   }
 }
+
+//async function fundSC(archethic, multiSigGenesis, connectionType) {
+ // const transferTx = archethic.transaction
+ //   .new()
+ //   .setType("transfer")
+ //   .addUCOTransfer(multiSigGenesis, Utils.parseBigInt('0'));
+
+ // console.log("Sending 1 UCO to fund mulitisig chain...");
+ // if (connectionType == "2") {
+ //   return new Promise(async (resolve, reject) => {
+ //     const seed = await secretPrompt("Enter the seed of the current account: ", (input) => input)  
+ //     const currentAddress = Crypto.deriveAddress(seed)
+ //     const lastIndex = await archethic.transaction.getTransactionIndex(Crypto.deriveAddress(seed))
+
+ //     transferTx
+ //       .build(seed, lastIndex)
+ //       .originSign(Utils.originPrivateKey)
+ //       .on("fullConfirmation", () => {
+ //         console.log(`Transaction confirmed`);
+ //         resolve({ 
+ //           fundingAddress: Utils.uint8ArrayToHex(transferTx.address),
+ //           currentAddress: currentAddress
+ //         })
+ //       })
+ //       .on("sent", () => {
+ //         console.log(`Transaction ${Utils.uint8ArrayToHex(transferTx.address)} sent`);
+ //       })
+ //       .on("error", (error, reason) => {
+ //         reject(`Error: ${error} (${JSON.stringify(reason)})`)
+ //       })
+ //       .send()
+ //   })
+ // } else {
+ //   await archethic.rpcWallet.sendTransaction(transferTx);
+ //   const { genesisAddress } =
+ //       await archethic.rpcWallet.getCurrentAccount();
+ // 
+ //   const currentAddress = genesisAddress
+ //   return { 
+ //     fundingAddress: Utils.uint8ArrayToHex(transferTx.address),
+ //     currentAddress: currentAddress
+ //   }
+ // }
+//}
 
 async function createContractTransaction(archethic, currentAddress, seedSC) {
   const bytecode = readFileSync("./contract.wasm")
