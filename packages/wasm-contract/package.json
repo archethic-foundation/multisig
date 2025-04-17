@@ -10,11 +10,11 @@
   },
   "dependencies": {
     "@archethicjs/ae-contract-as": "^1.0.0",
-    "@archethicjs/ae-contract-test": "^1.0.11",
+    "@archethicjs/ae-contract-test": "^1.0.14",
     "assemblyscript": "^0.27.29"
   },
   "devDependencies": {
-    "@archethicjs/sdk": "^2.0.0-rc.1",
+    "@archethicjs/sdk": "^2.0.0",
     "@types/node": "^22.1.0",
     "as-test": "^0.3.4",
     "typescript": "^5.5.4",
