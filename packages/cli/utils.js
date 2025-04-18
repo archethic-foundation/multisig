@@ -66,6 +66,6 @@ export function sendTransactionAsync(tx) {
       .on("timeout", () => {
         reject("Timeout");
       })
-      .send();
+      .send(70);
   });
 }
