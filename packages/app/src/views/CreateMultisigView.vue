@@ -8,17 +8,18 @@ import Archethic, { Crypto, Utils } from "@archethicjs/sdk";
 import { ref, onMounted, type Ref } from "vue";
 import { useRouter } from "vue-router";
 import { useConnectionStore } from "@/stores/connection";
-import type { Setup, Voter } from "@/types";
+import type { Setup } from "@/types";
 import { useVaultStore } from "@/stores/vaults";
 import { getDeployTransaction } from "@archethicjs/multisig-sdk";
-import type { ExtendedTransactionBuilder } from "@archethicjs/sdk/dist/transaction";
+import type { ContractManifest } from "@archethicjs/sdk/dist/contract";
+import { Contract } from "@archethicjs/sdk/dist/contract"
 
 const connectionStore = useConnectionStore();
 const vaultStore = useVaultStore();
 const router = useRouter();
 
 type setup = {
-  voters: Voter[];
+  voters: string[];
   confirmationThreshold: number;
 }
 
@@ -34,12 +35,12 @@ onMounted(async () => {
   await connectionStore.connect();
   const currentAddress = connectionStore.accountAddress;
   multisigSetup.value = {
-    voters: [{ address: currentAddress, name: "Connected wallet" }],
+    voters: [currentAddress],
     confirmationThreshold: 1,
   };
 });
 
-function handleNewVoters(voters: Voter[]) {
+function handleNewVoters(voters: string[]) {
   multisigSetup.value.voters = voters;
 }
 
@@ -57,7 +58,6 @@ async function deployMultisig() {
     }
     const seedSC = Crypto.randomSecretKey();
     const multisigGenesis = Crypto.deriveAddress(seedSC);
-    await fundSC(archethic, multisigGenesis);
 
     const multisigTx = await createContractTransaction(
       archethic,
@@ -89,43 +89,34 @@ async function deployMultisig() {
   }
 }
 
-async function fundSC(archethic: Archethic, multisigGenesis: Uint8Array) {
-  const transferTx = archethic.transaction
-    .new()
-    .setType("transfer")
-    .addUCOTransfer(multisigGenesis, Utils.parseBigInt("1"));
-
-  console.log("Sending 1 UCO to fund mulitisig chain...");
-  await archethic.rpcWallet?.sendTransaction(transferTx);
-}
-
 async function createContractTransaction(
   archethic: Archethic,
   setup: Setup,
   seedSC: Uint8Array,
-): Promise<ExtendedTransactionBuilder> {
-  const { secret, authorizedKeys } = await getSCOwnnership(archethic, seedSC);
-  const tx = getDeployTransaction(archethic, { voters: setup.voters.map(v => v.address), confirmationThreshold: setup.confirmationThreshold}, secret, authorizedKeys)
+) {
+  const contract = await fetchContract()
+  const tx = await getDeployTransaction(archethic, { voters: setup.voters, confirmationThreshold: setup.confirmationThreshold}, seedSC, contract)
   return tx
     .build(seedSC, 0)
-    .originSign(Utils.originPrivateKey) as ExtendedTransactionBuilder;
+    .originSign(Utils.originPrivateKey);
 }
 
-async function getSCOwnnership(archethic: Archethic, seed: Uint8Array) {
-  const aesKey = Crypto.randomSecretKey();
-  const storageNoncePublicKey =
-    await archethic.network.getStorageNoncePublicKey();
-
-  return {
-    secret: Crypto.aesEncrypt(seed, aesKey),
-    authorizedKeys: [
-      {
-        publicKey: storageNoncePublicKey,
-        encryptedSecretKey: Utils.uint8ArrayToHex(Crypto.ecEncrypt(aesKey, storageNoncePublicKey)),
-      },
-    ],
-  };
+async function fetchContract(): Promise<Contract> {
+  const bytecode = await fetchContractBytecode()
+  const manifest = await fetchContractManifest()
+  return new Contract(new Uint8Array(bytecode), manifest)
 }
+
+function fetchContractBytecode(): Promise<ArrayBuffer> {
+  return fetch("./contract.wasm")
+    .then(r => r.arrayBuffer())
+}
+
+function fetchContractManifest(): Promise<ContractManifest> {
+  return fetch("./contract_manifest.json")
+    .then(r => r.json())
+}
+
 </script>
 
 <template>

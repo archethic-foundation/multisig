@@ -5,15 +5,19 @@ import Button from "../Button.vue";
 import VoterItem from "./VoterItem.vue";
 import VoterForm from "./VoterForm.vue";
 import ConfirmationSelect from "./SetupForm/ConfirmationSelect.vue";
-import type { Voter } from "@/types";
+
+import { useConnectionStore } from "@/stores/connection";
+const connectionStore = useConnectionStore();
 
 type Props = {
-  voters: Voter[];
+  voters: string[];
   requiredConfirmations?: number;
   canEdit?: boolean;
 }
 
 const props = defineProps<Props>()
+
+const { accountAddress } = connectionStore
 
 const emit = defineEmits(["new-confirmation-threshold", "new-voters"]);
 
@@ -26,13 +30,13 @@ function handleRequiredConfirmationChange(newRequiredConfirmations: number) {
 
 function handleNewVoter(voterAddress: string) {
   const newVoters = props.voters;
-  newVoters.push({ address: voterAddress });
+  newVoters.push(voterAddress);
   emit("new-voters", props.voters);
 }
 
 function handleRemoveVoter(voterAddress: string) {
   const newVoters = props.voters.filter((voter) => {
-    return voter.address != voterAddress;
+    return voter != voterAddress;
   });
   emit("new-voters", newVoters);
 }
@@ -62,6 +66,7 @@ function handleRemoveVoter(voterAddress: string) {
   <div class="flex flex-col gap-3" v-if="nbVoters > 0">
     <VoterItem
       :voter="voter"
+      :removable="voter.toUpperCase() != accountAddress.toUpperCase()"
       @remove-voter="handleRemoveVoter"
       v-for="voter in props.voters"
     />

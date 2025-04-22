@@ -1,11 +1,8 @@
+import type { Contract } from "@archethicjs/sdk/dist/contract";
+
 export type Setup = {
   confirmationThreshold: number,
-  voters: Voter[]
-}
-
-export type Voter = {
-  address: string;
-  name?: string;
+  voters: string[]
 }
 
 export type TokenTransfer = {
@@ -28,7 +25,7 @@ export type Recipient = {
 
 export type TxData = {
   content: string;
-  code: string;
+  contract?: Contract;
   ucoTransfers: UCOTransfer[];
   tokenTransfers: TokenTransfer[];
   recipients: Recipient[];
@@ -40,16 +37,24 @@ export type TxSetup = {
   newThreshold?: number;
 }
 
-export type TransactionStatus = "pending" | "done"
+export enum TransactionStatus {
+  Pending = "pending",
+  Done = "done"
+}
 
 export type Transaction = {
   id: number;
   txData?: TxData;
-  setup: TxSetup;
+  setup?: TxSetup;
+  multisigSetup: Setup;
   status: TransactionStatus;
-  confirmations: string[]
-  detailsTx: string;
+  confirmations: Confirmation[]
+  snapshopTx?: string;
   originTx: string;
   from: string;
-  multisigSetup: Setup;
+}
+
+export type Confirmation = {
+  confirmationAddress: string;
+  from: string;
 }

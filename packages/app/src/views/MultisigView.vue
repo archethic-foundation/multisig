@@ -12,7 +12,7 @@ import Warning from "@/components/Warning.vue";
 import Loading from "@/components/Loading.vue";
 
 import { useConnectionStore } from "@/stores/connection";
-import type { Setup, Transaction, TxData, TxSetup, Voter } from "@/types";
+import type { Setup, Transaction, TxData, TxSetup } from "@/types";
 import type { Balance, Token } from "@archethicjs/sdk/dist/types";
 import type TransactionBuilder from "@archethicjs/sdk/dist/transaction_builder";
 import { getConfirmTransaction, getProposeTransaction, type MultisigSetup, type MultisigTransaction, type Recipient, type TokenTransfer, type UCOTransfer } from "@archethicjs/multisig-sdk";
@@ -30,12 +30,8 @@ type tokenBalance = Token & {
   tokenId: number;
 };
 
-type removableVoter = Voter & {
-  removable: boolean;
-}
-
 const transactions = ref([] as Transaction[]);
-const voters = ref([] as removableVoter[]);
+const voters = ref([] as string[]);
 const requiredConfirmations = ref(0);
 const hasSetupChanged = ref(false);
 const balance = ref({ uco: 0, tokens: [] as tokenBalance[] } as multisigBalance);
@@ -58,7 +54,7 @@ const canEdit = computed(() => {
   return (
     voters.value.find((v) => {
       return (
-        v.address.toUpperCase() == connectionStore.accountAddress.toUpperCase()
+        v.toUpperCase() == connectionStore.accountAddress.toUpperCase()
       );
     }) != undefined
   );
@@ -120,29 +116,58 @@ async function loadBalance() {
 }
 
 async function loadStatus() {
-  let { setup: setup, transactions: musig_transactions } =
-    await archethic?.network.callFunction(contractAddress as string, "status", []);
+  let { confirmationThreshold, voters, transactions: musig_transactions } =
+    await archethic?.network.callFunction(contractAddress as string, "getState", []);
 
-  setup = {
-    voters: setup.voters.map((a: string) => { return { address: a} as Voter }),
-    confirmationThreshold: setup.confirmation_threshold
+  const setup = {
+    voters: voters.map((a: any) => a.hex),
+    confirmationThreshold: confirmationThreshold
   }
   setSetup(setup);
-  loadTransactions(musig_transactions, setup);
+
+  let transactions: Record<number, any> = {}
+  for (let id = 1; id <= Object.keys(musig_transactions).length; id++) {
+    const transaction = musig_transactions[id];
+    const formattedTx = {
+      status: transaction.status,
+      confirmations: transaction.confirmations.map((confirmation: any) => {
+        return {
+          confirmationAddress: confirmation.confirmationAddress.hex,
+          from: confirmation.from.hex
+        }
+      }),
+      from: transaction.from.hex,
+      originTx: transaction.originTx ? transaction.originTx.hex : null,
+      snapshotTransaction: transaction.snapshotTransaction ? transaction.snapshotTransaction.hex : null,
+      txData: transaction.txData ? {
+        content: transaction.txData.content,
+        contract: transaction.txData.contract,
+        ucoTransfers: transaction.txData.ucoTransfers ? transaction.txData.ucoTransfers.map((t: any): any => {
+          return { to: t.to.hex, amount: t.amount }
+        }) : [],
+        tokenTransfers: transaction.txData.tokenTransfers ? transaction.txData.tokenTransfers.map((t: any): any => {
+          return { to: t.to.hex, amount: t.amount, tokenAddress: t.tokenAddress.hex, tokenId: t.tokenId }
+        }) : [],
+        recipients: transaction.txData.recipients ? transaction.txData.recipients.map((r: any): any => {
+          return { address: r.address.hex, action: r.action, args: r.args }
+        }) : []
+      }: null,
+      setup: transaction.setup ? {
+        newVoters: transaction.setup.newVoters.map((voter: any) => { return voter.hex }),
+        removedVoters: transaction.setup.removedVoters.map((voter: any) => { return voter.hex }),
+        confirmationThreshold: transaction.setup.confirmationThreshold
+      } : { newVoters: [], removedVoters: [] },
+    }
+
+    transactions[id] = formattedTx;
+  }
+
+  loadTransactions(transactions, setup);
 }
 
 function setSetup(setup: Setup) {
   initialSetup.value = setup;
-
-  voters.value = setup.voters.map((voter, _index, list) => {
-    return {
-      address: voter.address,
-      removable:
-        list.length > 0 &&
-        voter.address.toUpperCase() != connectionStore.accountAddress.toUpperCase(),
-    };
-  });
-
+  voters.value = setup.voters;
   requiredConfirmations.value = setup.confirmationThreshold;
 }
 
@@ -151,37 +176,37 @@ async function loadTransactions(musig_transactions: Record<number, Record<string
     Object.keys(musig_transactions).map(async (id: string) => {
       const transaction = musig_transactions[parseInt(id)];
 
-      if (transaction.details_tx) {
+      if (transaction.snapshotTransaction) {
         const { txData, setup, snapshotSetup } = await fetchStateStatus(
-          transaction.details_tx,
+          transaction.snapshotTransaction,
           parseInt(id),
         );
-        if (txData && setup && snapshotSetup) {
-          const tx = explode_tx(txData, setup)
-          return Object.assign(tx, {
+
+        if ((txData || setup) && snapshotSetup) {
+          return {
             id: parseInt(id),
             multisigSetup: snapshotSetup,
             status: transaction.status,
             confirmations: transaction.confirmations,
-            detailsTx: transaction.details_tx,
-            originTx: transaction.origin_tx,
+            snapshotTransaction: transaction.snapshotTransaction,
+            originTx: transaction.originTx,
             from: transaction.from,
-          }) as Transaction
+            txData: txData,
+            setup: setup
+          } as Transaction
         }
       }
 
-      const tx = explode_tx(transaction.tx_data, transaction.setup)
-      return Object.assign(tx,
-        {
-          id: parseInt(id),
-          multisigSetup: setup,
-          status: transaction.status,
-          confirmations: transaction.confirmations,
-          detailsTx: transaction.details_tx,
-          originTx: transaction.origin_tx,
-          from: transaction.from
-        }
-      ) as Transaction;
+      return {
+        id: parseInt(id),
+        multisigSetup: setup,
+        status: transaction.status,
+        confirmations: transaction.confirmations,
+        originTx: transaction.originTx,
+        from: transaction.from,
+        txData: transaction.txData,
+        setup: transaction.setup
+      } as Transaction;
     }),
   );
 }
@@ -215,63 +240,69 @@ async function fetchStateStatus(transactionAddress: string, id: number) {
 
   const { state } = state_utxo;
   const snapshotSetup: Setup = {
-    confirmationThreshold: state.confirmation_threshold,
-    voters: state.voters.map((voterAddress: string): Voter => { return { address: voterAddress } as Voter })
+    confirmationThreshold: state.confirmationThreshold,
+    voters: state.voters.map((voter: any): string => voter.hex)
   };
-  const { tx_data, setup } = state.transactions[id];
-  return { txData: tx_data, setup, snapshotSetup }
-}
+  const { txData, setup } = state.transactions[id];
+  const formattedSetup = setup ? {
+    newVoters: setup.newVoters.map((voter: any) => voter.hex),
+    removedVoters: setup.removedVoters.map((voter: any) => voter.hex),
+    confirmationThreshold: setup.confirmationThreshold
+  } : null
 
-type explodedTx = {
-  txData: TxData;
-  setup: TxSetup;
-}
+  const formattedTxData = txData ? {
+    ucoTransfers: txData.ucoTransfers ? txData.ucoTransfers.map((ucoTransfer: any) => {
+      return {
+        amount: ucoTransfer.amount,
+        to: ucoTransfer.to.hex
+      }
+    }) : [],
+    tokenTransfers: txData.tokenTransfers ? txData.tokenTransfers.map((tokenTransfer: any) => {
+      return {
+        amount: tokenTransfer.amount,
+        to: tokenTransfer.to.hex,
+        tokenAddress: tokenTransfer.tokenAddress.hex,
+        tokenId: tokenTransfer.tokenId
+      }
+    }) : [],
+    recipients: txData.recipients ? txData.recipients.map((recipient: any) => {
+      return {
+        to: recipient.to.hex,
+        action: recipient.action,
+        args: recipient.args
+      }
+    }) : [],
+    content: txData.content,
+    contract: txData.contract
+  } : null
 
-function explode_tx(txData?: Record<string, any>, setup?: Record<string, any>): explodedTx {
-  return {
-    txData: {
-      ucoTransfers: txData ? txData.uco_transfers: [],
-      tokenTransfers: txData ? txData.token_transfers: [],
-      code: txData ? txData.code : "",
-      content: txData ? txData.content : "",
-      recipients: txData ? txData.recipients : []
-    } as TxData,
-    setup: {
-      newVoters: setup && setup.new_voters ? setup.new_voters : [],
-      removedVoters: setup && setup.removed_voters ? setup.removed_voters : [],
-      newThreshold: setup ? setup.confirmation_threshold : undefined,
-    } as TxSetup
-  }
+  return { txData: formattedTxData, setup: formattedSetup, snapshotSetup }
 }
 
 async function proposeNewTransaction(proposeTransaction?: TxData, proposeSetup?: TxSetup) {
-  const newTx: MultisigTransaction = proposeTransaction
-    ? {
-        ucoTransfers: proposeTransaction.ucoTransfers as UCOTransfer[],
-        tokenTransfers: proposeTransaction.tokenTransfers as TokenTransfer[],
-        recipients: proposeTransaction.recipients as Recipient[],
-        code: proposeTransaction.code,
-        content: proposeTransaction.content,
-      }
-    : {
-        ucoTransfers: [],
-        tokenTransfers: [],
-        recipients: [],
-        code: "",
-        content: "",
-      };
-
-  const newSetup: MultisigSetup = proposeSetup
-    ? {
-        newVoters: proposeSetup.newVoters,
-        removedVoters: proposeSetup.removedVoters,
-        confirmationThreshold: proposeSetup.newThreshold,
-      }
-    : {};
-
   const chainSize = await archethic?.transaction.getTransactionIndex(contractAddress);
     
-  const tx = getProposeTransaction(archethic as Archethic, contractAddress, newTx, newSetup)
+  const txFormatted = proposeTransaction? {
+    ucoTransfers: proposeTransaction.ucoTransfers.map((ucoTransfer: UCOTransfer) => {
+      return {
+        amount: new Number(Utils.parseBigInt(ucoTransfer.amount.toString())) as number,
+        to: ucoTransfer.to
+      }
+    }),
+    tokenTransfers: proposeTransaction.tokenTransfers.map((tokenTransfer: TokenTransfer) => {
+      return {
+        amount: new Number(Utils.parseBigInt(tokenTransfer.amount.toString())) as number,
+        to: tokenTransfer.to,
+        tokenAddress: tokenTransfer.tokenAddress,
+        tokenId: tokenTransfer.tokenId
+      }
+    }),
+    content: proposeTransaction.content,
+    contract: proposeTransaction.contract,
+    recipients: proposeTransaction.recipients
+  } : undefined
+  
+  const tx = getProposeTransaction(archethic as Archethic, contractAddress, txFormatted, proposeSetup)
   
   await archethic?.rpcWallet?.sendTransaction(tx as TransactionBuilder);
   await waitNewTransaction(contractAddress, chainSize as number);
@@ -329,14 +360,12 @@ async function handleTransactionConfirmation(transactionId: number) {
 }
 
 async function proposeNewSetup() {
-  const initialVoters = initialSetup.value.voters.map(x => x.address)
-  const initialConfirmationThreshold =
-    initialSetup.value.confirmationThreshold;
+  const initialConfirmationThreshold = initialSetup.value.confirmationThreshold;
 
   const updatedVoters = new Set(
-    voters.value.map(({ address: address }) => address),
+    voters.value,
   );
-  const initalVoterSet = new Set(initialVoters);
+  const initalVoterSet = new Set(initialSetup.value.voters);
 
   let removedVoters: string[] = [];
   let newVoters: string[] = [];
@@ -375,8 +404,8 @@ async function proposeNewSetup() {
   }
 }
 
-function handleNewVoters(newVoters: Voter[]) {
-  voters.value = newVoters as removableVoter[];
+function handleNewVoters(newVoters: string[]) {
+  voters.value = newVoters;
   if (newVoters.length < initialSetup.value.confirmationThreshold) {
     requiredConfirmations.value = newVoters.length;
   }

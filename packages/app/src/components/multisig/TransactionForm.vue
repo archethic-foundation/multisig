@@ -13,6 +13,7 @@ import ContractCallItem from "@/components/multisig/TransactionForm/ContractCall
 import Button from "../Button.vue";
 import type { Recipient, TokenTransfer, TxData, UCOTransfer } from "@/types";
 import type { Token } from "@archethicjs/sdk/dist/types";
+import { Contract } from "@archethicjs/sdk/dist/contract";
 
 const emit = defineEmits<{
   proposeTransaction: [transaction: TxData]
@@ -37,7 +38,7 @@ const transaction: Ref<TxData> = ref({
   ucoTransfers: [],
   tokenTransfers: [],
   recipients: [],
-  code: "",
+  contract: undefined,
   content: "",
 });
 
@@ -47,7 +48,8 @@ const showContractCallForm = ref(false);
 const showContractCodeForm = ref(false);
 const showContentForm = ref(false);
 
-const codeSrc = ref("");
+const bytecodeSrc = ref(new ArrayBuffer(0));
+const manifestSrc = ref("");
 const contentSrc = ref("");
 
 const canProposeTransaction = computed(() => {
@@ -55,7 +57,7 @@ const canProposeTransaction = computed(() => {
     transaction.value.ucoTransfers.length > 0 ||
     transaction.value.tokenTransfers.length > 0 ||
     transaction.value.recipients.length > 0 ||
-    transaction.value.code != "" ||
+    transaction.value.contract != null ||
     transaction.value.content != ""
   );
 });
@@ -104,9 +106,10 @@ function addContractCall(contractCall: Recipient) {
   showContractCallForm.value = false;
 }
 
-function setContractCode() {
-  transaction.value.code = codeSrc.value;
-  codeSrc.value = "";
+function setContract() {
+  transaction.value.contract = new Contract(bytecodeSrc.value as Uint8Array, JSON.parse(manifestSrc.value))
+  bytecodeSrc.value = new ArrayBuffer(0);
+  manifestSrc.value = ""
   showContractCodeForm.value = false;
 }
 
@@ -120,7 +123,16 @@ function uploadContractCode(fileList: FileList | null) {
   if (!fileList) return
   var reader = new FileReader();
   reader.onload = function (_event) {
-    codeSrc.value = reader.result as string;
+    bytecodeSrc.value = reader.result as ArrayBuffer;
+  };
+  reader.readAsText(fileList[0]);
+}
+
+function uploadContractManifest(fileList: FileList | null) {
+  if (!fileList) return
+  var reader = new FileReader();
+  reader.onload = function (_event) {
+    manifestSrc.value = reader.result as string;
   };
   reader.readAsText(fileList[0]);
 }
@@ -163,7 +175,7 @@ function removeContractCall(call: Recipient) {
 }
 
 function removeCode() {
-  transaction.value.code = "";
+  transaction.value.contract = undefined;
 }
 
 function removeContent() {
@@ -175,7 +187,7 @@ function reset() {
     ucoTransfers: [],
     tokenTransfers: [],
     recipients: [],
-    code: "",
+    contract: undefined,
     content: "",
   };
 }
@@ -227,9 +239,9 @@ watch(
     </div>
 
     <div class="mt-5 flex flex-col gap-5" v-show="showContractCodeForm">
-      <p class="text-xs text-slate-500">Define contract's code</p>
+      <p class="text-xs text-slate-500">Update contract</p>
       <div>
-        <label for="codeSrc" class="text-sm">Code source file</label>
+        <label for="codeSrc" class="text-sm">Bytecode source file</label>
         <input
           class="outline-none text-sm w-full bg-transparent p-1 border-b"
           v-on:change="uploadContractCode(($event.target as HTMLInputElement).files)"
@@ -237,9 +249,18 @@ watch(
           id="codeSrc"
         />
       </div>
+      <div>
+        <label for="codeSrc" class="text-sm">Manifest file</label>
+        <input
+          class="outline-none text-sm w-full bg-transparent p-1 border-b"
+          v-on:change="uploadContractManifest(($event.target as HTMLInputElement).files)"
+          type="file"
+          id="manifestSrc"
+        />
+      </div>
 
       <div>
-        <Button class="text-xs h-8" @click="setContractCode">Submit</Button>
+        <Button class="text-xs h-8" @click="setContract">Submit</Button>
       </div>
     </div>
 
@@ -290,11 +311,14 @@ watch(
         </div>
       </div>
 
-      <div v-show="transaction.code != ''" class="pt-5 mt-2">
+      <div v-show="transaction.contract != undefined" class="pt-5 mt-2">
         <p class="text-xs text-slate-500 mb-2">Contract code</p>
         <div class="flex mb-2">
           <p class="text-xs truncate content-center w-1/4">
-            {{ transaction.code }}
+            {{ transaction.contract?.bytecode }}
+          </p>
+          <p class="text-xs truncate content-center w-1/4">
+            {{ JSON.stringify(transaction.contract?.manifest) }}
           </p>
           <Button class="ml-5 text-xs h-8" @click="removeCode()">Remove</Button>
         </div>

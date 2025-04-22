@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from "vue";
 import Button from "../Button.vue";
-import { shortenAddress } from "@/utils";
 import Address from "../Address.vue";
 
 interface Props {
@@ -40,12 +39,13 @@ const alreadyVoted = ref(false)
 watchEffect(async () => {
     const archethic = connectionStore.connection;
     const confirmationsGenesisAddresses = await Promise.all(
-        props.transaction.confirmations.map(async (confirmation) => {
+        props.transaction.confirmations.map(async (confirmation: any) => {
+            const address = confirmation.confirmationAddress
             const res = await archethic?.network.rawGraphQLQuery(
-                `query{ genesisAddress(address: "${confirmation}") }`,
+                `query{ genesisAddress(address: "${address}") }`,
             );
             return res.genesisAddress;
-        }),
+        })
     );
 
     alreadyVoted.value = confirmationsGenesisAddresses.includes(currentAddress);
@@ -154,11 +154,8 @@ function confirmTransaction() {
                     </div>
                 </div>
 
-                <div v-show="transaction.txData?.code != ''">
-                    <p class="text-xs text-slate-500 mb-2">Contract code</p>
-                    <pre class="text-xs truncate">{{
-                        shortenAddress(transaction.txData?.code as string)
-                    }}</pre>
+                <div v-show="transaction.txData?.contract != undefined">
+                    <p class="text-xs text-slate-500 mb-2">New contract code</p>
                 </div>
 
                 <div v-show="transaction.txData?.content != ''">
@@ -183,21 +180,22 @@ function confirmTransaction() {
                         </p>
                     </div>
                 </div>
-
-                <div v-for="voter in transaction.setup.removedVoters">
-                    <p class="mb-2 text-xs content-center text-slate-500">
-                        <span
-                            >Remove voter
-                            <Address :address="voter" chain/>
-                        </span>
-                    </p>
-                </div>
-
-                <div v-show="transaction.setup.newThreshold">
-                    <p class="text-xs text-slate-500 mb-2">
-                        New confirmation threshold:
-                        {{ transaction.setup.newThreshold }}
-                    </p>
+                <div v-if="transaction.setup" >
+                    <div v-for="voter in transaction.setup.removedVoters">
+                        <p class="mb-2 text-xs content-center text-slate-500">
+                            <span
+                                >Remove voter
+                                <Address :address="voter" chain/>
+                            </span>
+                        </p>
+                    </div>
+    
+                    <div v-show="transaction.setup.newThreshold">
+                        <p class="text-xs text-slate-500 mb-2">
+                            New confirmation threshold:
+                            {{ transaction.setup.newThreshold }}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -207,7 +205,7 @@ function confirmTransaction() {
                     class="text-xs text-slate-500"
                     v-for="confirmation in props.transaction.confirmations"
                 >
-                    <Address :address="confirmation" />
+                    <Address :address="confirmation.confirmationAddress" />
                 </p>
             </div>
         </div>

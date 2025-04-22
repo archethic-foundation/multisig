@@ -4,9 +4,10 @@ import Address from "../Address.vue";
 
 const props = defineProps({
     voter: {
-        type: Object,
+        type: String,
         required: true,
     },
+    removable: { type: Boolean, required: false, default: true },
 });
 
 defineEmits(["remove-voter"]);
@@ -15,13 +16,12 @@ defineEmits(["remove-voter"]);
 <template>
     <div class="flex text-slate-700">
         <p class="text-sm content-center truncate w-1/3">
-            <Address :address="voter.address" chain />
-            <span v-show="voter.name">({{ voter.name }})</span>
+            <Address :address="voter" chain />
         </p>
         <Button
             class="ml-5 bg-slate-500"
-            @click="$emit('remove-voter', voter.address)"
-            v-show="voter.removable"
+            @click="$emit('remove-voter', voter)"
+            v-show="removable"
             >Remove</Button
         >
     </div>
