@@ -1,6 +1,6 @@
 {
   "name": "@archethicjs/multisig-sdk",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "main": "./dist/index.es.js",
   "module": "./dist/index.es.js",
   "type": "module",
