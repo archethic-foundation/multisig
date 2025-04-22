@@ -60,7 +60,9 @@ export type Recipient = {
 export function getDeployTransaction(archethic: Archethic, setup: MultisigInit, seed: Uint8Array | string, contract: Contract): Promise<ExtendedTransactionBuilder> {
   return newContractTransaction(archethic, contract, seed, {
     content: JSON.stringify({
-      voters: setup.voters,
+      voters: setup.voters.map((x) => {
+        return { hex: x }
+      }),
       confirmationThreshold: setup.confirmationThreshold,
     })
   } as TransactionData)
@@ -70,7 +72,7 @@ export function getProposeTransaction(archethic: Archethic, contractAddress: str
   return archethic.transaction
     .new()
     .setType("transfer")
-    .addRecipient(contractAddress, "proposeTransaction", { txData, setup });
+    .addRecipient(contractAddress, "proposeTransaction", { txData: txData, setup: setup });
 }
 
 export function getConfirmTransaction(archethic: Archethic, contractAddress: string, transactionId: number): TransactionBuilder {

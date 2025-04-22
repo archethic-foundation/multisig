@@ -1,5 +1,6 @@
 import Archethic, { Crypto, Utils } from "@archethicjs/sdk";
 import { Contract } from "@archethicjs/sdk/dist/contract.js";
+import { getDeployTransaction } from "@archethicjs/multisig-sdk";
 
 import crypto from "crypto";
 
@@ -9,7 +10,6 @@ import {
   secretPrompt,
   sendTransactionAsync,
 } from "../utils.js";
-import { getDeployTransaction } from "@archethicjs/multisig-sdk";
 
 import { readFileSync } from "fs";
 
@@ -82,50 +82,6 @@ async function getCurrentAddress(archethic, connectionType) {
   }
 }
 
-//async function fundSC(archethic, multiSigGenesis, connectionType) {
- // const transferTx = archethic.transaction
- //   .new()
- //   .setType("transfer")
- //   .addUCOTransfer(multiSigGenesis, Utils.parseBigInt('0'));
-
- // console.log("Sending 1 UCO to fund mulitisig chain...");
- // if (connectionType == "2") {
- //   return new Promise(async (resolve, reject) => {
- //     const seed = await secretPrompt("Enter the seed of the current account: ", (input) => input)  
- //     const currentAddress = Crypto.deriveAddress(seed)
- //     const lastIndex = await archethic.transaction.getTransactionIndex(Crypto.deriveAddress(seed))
-
- //     transferTx
- //       .build(seed, lastIndex)
- //       .originSign(Utils.originPrivateKey)
- //       .on("fullConfirmation", () => {
- //         console.log(`Transaction confirmed`);
- //         resolve({ 
- //           fundingAddress: Utils.uint8ArrayToHex(transferTx.address),
- //           currentAddress: currentAddress
- //         })
- //       })
- //       .on("sent", () => {
- //         console.log(`Transaction ${Utils.uint8ArrayToHex(transferTx.address)} sent`);
- //       })
- //       .on("error", (error, reason) => {
- //         reject(`Error: ${error} (${JSON.stringify(reason)})`)
- //       })
- //       .send()
- //   })
- // } else {
- //   await archethic.rpcWallet.sendTransaction(transferTx);
- //   const { genesisAddress } =
- //       await archethic.rpcWallet.getCurrentAccount();
- // 
- //   const currentAddress = genesisAddress
- //   return { 
- //     fundingAddress: Utils.uint8ArrayToHex(transferTx.address),
- //     currentAddress: currentAddress
- //   }
- // }
-//}
-
 async function createContractTransaction(archethic, currentAddress, seedSC) {
   const bytecode = readFileSync("./contract.wasm")
   const manifest = readFileSync("./contract_manifest.json", "utf-8")
@@ -141,12 +97,9 @@ async function promptInitialVoters(defaultAddress) {
     `Enter the address of the initial voters (use ',' as separator) [default: ${defaultAddress}]: `,
     (input) => {
       if (input == "") {
-        return [ { hex: defaultAddress }];
+        return [ defaultAddress ];
       }
-      const voters = input.split(",").map((x) => { 
-        return { hex: x.trim() }
-      });
-
+      const voters = input.split(",").map((x) => x.trim());
       voters.forEach((x) => {
         if (!Utils.isHex(x)) {
           throw new Error("Voter's address must be hexadecimal");
