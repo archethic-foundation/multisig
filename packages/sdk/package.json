@@ -21,7 +21,7 @@
     "smart contract"
   ],
   "author": "Archethic Foundation",
-  "license": "AGPL-3",
+  "license": "MIT",
   "description": "",
   "devDependencies": {
     "typescript": "^5.6.3",

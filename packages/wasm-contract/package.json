@@ -8,6 +8,7 @@
     "build:release": "aewasm build --mode release",
     "test": "npm run build && vitest run --dir ./tests"
   },
+  "license": "MIT",
   "dependencies": {
     "@archethicjs/ae-contract-as": "^1.0.0",
     "@archethicjs/ae-contract-test": "^1.0.14",
